@@ -56,7 +56,7 @@ const FixedLandingPage = () => {
             <Link className="hover:text-white transition-colors" href="/security">Security</Link>
             <Link className="hover:text-white transition-colors" href="/contact">Contact</Link>
           </div>
-          <Link className="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="/contact">Sign In</Link>
+          <Link className="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="/sign-in">Sign In</Link>
         </motion.nav>
 
         {/* Hero Section */}
