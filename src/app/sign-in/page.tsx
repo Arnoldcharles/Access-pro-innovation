@@ -54,7 +54,17 @@ export default function SignInPage() {
     setError('');
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      if (user) {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const orgSlug = snap.exists() ? (snap.data().orgSlug as string | undefined) : undefined;
+        if (orgSlug) {
+          router.replace(`/${orgSlug}`);
+        } else {
+          router.replace('/onboarding');
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Google sign-in failed';
       setError(message);
