@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { motion, cubicBezier } from 'framer-motion';
+import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
   collection,
@@ -11,6 +11,7 @@ import {
   doc,
   getDoc,
   onSnapshot,
+  serverTimestamp,
   updateDoc,
   writeBatch,
 } from 'firebase/firestore';
@@ -30,6 +31,12 @@ type EventData = {
 
 type Guest = {
   id?: string;
+  name: string;
+  phone: string;
+  email: string;
+};
+
+type InviteTarget = {
   name: string;
   phone: string;
   email: string;
@@ -62,6 +69,14 @@ export default function EventDashboardPage() {
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteMode, setInviteMode] = useState<'single' | 'all'>('single');
+  const [inviteTarget, setInviteTarget] = useState<InviteTarget | null>(null);
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteImage, setInviteImage] = useState<string>('');
+  const [inviteLink, setInviteLink] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState('');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -195,6 +210,112 @@ export default function EventDashboardPage() {
       setGuestError(message);
     } finally {
       setGuestSaving(false);
+    }
+  };
+
+  const buildInviteMessage = (name: string) =>
+    `Hi ${name}, you are invited to ${eventData?.name ?? 'our event'} on ${eventData?.date ?? 'TBD'} at ${
+      eventData?.location ?? 'TBD'
+    }.`;
+
+  const openInviteModal = (mode: 'single' | 'all', target?: InviteTarget) => {
+    setInviteMode(mode);
+    setInviteTarget(target ?? null);
+    setInviteMessage(buildInviteMessage(target?.name ?? 'there'));
+    setInviteImage('');
+    setInviteLink('');
+    setInviteStatus('');
+    setInviteOpen(true);
+  };
+
+  const closeInviteModal = () => {
+    setInviteOpen(false);
+  };
+
+  const handleInviteImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setInviteImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const createToken = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  };
+
+  const sendWhatsAppPlaceholder = async (phone: string, message: string, link: string) => {
+    // Placeholder only. Replace with WhatsApp Business API/Twilio integration.
+    console.log('Send WhatsApp to', phone, message, link);
+  };
+
+  const handleSendInvites = async () => {
+    const orgSlug = params?.org;
+    const eventSlug = params?.event;
+    if (!orgSlug || !eventSlug) return;
+    if (inviteMode === 'single' && !inviteTarget) return;
+    setInviteLoading(true);
+    setInviteStatus('');
+    try {
+      const batch = writeBatch(db);
+      const invitesRef = collection(db, 'orgs', orgSlug, 'events', eventSlug, 'invites');
+
+      if (inviteMode === 'single' && inviteTarget) {
+        const token = createToken();
+        const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
+        batch.set(doc(invitesRef, token), {
+          token,
+          guestName: inviteTarget.name,
+          guestPhone: inviteTarget.phone,
+          guestEmail: inviteTarget.email,
+          eventName: eventData?.name ?? '',
+          eventDate: eventData?.date ?? '',
+          eventLocation: eventData?.location ?? '',
+          message: inviteMessage,
+          imageDataUrl: inviteImage,
+          used: false,
+          createdAt: serverTimestamp(),
+        });
+        await batch.commit();
+        setInviteLink(link);
+        await sendWhatsAppPlaceholder(inviteTarget.phone, inviteMessage, link);
+        setInviteStatus('Invite created and queued for WhatsApp (placeholder).');
+      }
+
+      if (inviteMode === 'all') {
+        if (guests.length === 0) {
+          setInviteStatus('No saved guests to invite. Save guests first.');
+          setInviteLoading(false);
+          return;
+        }
+        guests.forEach((guest) => {
+          const token = createToken();
+          const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
+          batch.set(doc(invitesRef, token), {
+            token,
+            guestName: guest.name,
+            guestPhone: guest.phone,
+            guestEmail: guest.email,
+            eventName: eventData?.name ?? '',
+            eventDate: eventData?.date ?? '',
+            eventLocation: eventData?.location ?? '',
+            message: buildInviteMessage(guest.name),
+            imageDataUrl: inviteImage,
+            used: false,
+            createdAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+        setInviteStatus(`Invites created for ${guests.length} guests (placeholder WhatsApp send).`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to create invites';
+      setInviteStatus(message);
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -465,6 +586,13 @@ export default function EventDashboardPage() {
               >
                 {guestSaving ? 'Saving...' : `Save ${pendingGuests.length} guest${pendingGuests.length === 1 ? '' : 's'}`}
               </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl bg-emerald-600 text-white text-sm"
+                onClick={() => openInviteModal('all')}
+              >
+                Invite all via WhatsApp
+              </button>
             </div>
             {guestError ? <div className="text-sm text-red-400 mb-4">{guestError}</div> : null}
             <div className="space-y-2">
@@ -523,6 +651,21 @@ export default function EventDashboardPage() {
                                   Edit
                                 </button>
                               ) : null}
+                              {!isPending ? (
+                                <button
+                                  type="button"
+                                  className="text-emerald-400 hover:text-emerald-300"
+                                  onClick={() =>
+                                    openInviteModal('single', {
+                                      name: guest.name,
+                                      phone: guest.phone,
+                                      email: guest.email,
+                                    })
+                                  }
+                                >
+                                  Invite
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 className="text-red-400 hover:text-red-300"
@@ -549,6 +692,102 @@ export default function EventDashboardPage() {
             </div>
           </div>
         </section>
+
+        <AnimatePresence>
+          {inviteOpen ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0 bg-black/70"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={closeInviteModal}
+              />
+              <motion.section
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: easeOut } }}
+                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.2 } }}
+                className="relative z-10 w-full max-w-[680px] bg-slate-900/95 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl"
+              >
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold mb-1">
+                      {inviteMode === 'single' ? 'Invite guest via WhatsApp' : 'Invite all guests via WhatsApp'}
+                    </h2>
+                    <p className="text-sm text-slate-400">
+                      {inviteMode === 'single'
+                        ? `Sending to ${inviteTarget?.name ?? ''} (${inviteTarget?.phone ?? ''})`
+                        : `Sending to ${guests.length} saved guests`}
+                    </p>
+                  </div>
+                  <button type="button" className="text-sm text-slate-400 hover:text-white" onClick={closeInviteModal}>
+                    Close
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs uppercase tracking-widest text-slate-500">Message</label>
+                    <textarea
+                      className="mt-2 w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-3 text-sm min-h-[120px]"
+                      value={inviteMessage}
+                      onChange={(event) => setInviteMessage(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-widest text-slate-500">Image</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="mt-2 w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-3 text-sm"
+                      onChange={handleInviteImage}
+                    />
+                  </div>
+                  {inviteMode === 'single' ? (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                      <div className="text-xs text-slate-500 mb-2">Invite link</div>
+                      <div className="text-sm text-blue-400">{inviteLink || 'Link will appear after send.'}</div>
+                      <div className="mt-4 flex items-center gap-4">
+                        <div className="w-28 h-28 bg-slate-950/40 border border-slate-800 rounded-xl flex items-center justify-center text-xs text-slate-500">
+                          {inviteLink ? (
+                            <img
+                              alt="QR code"
+                              className="w-full h-full object-cover rounded-xl"
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                                `${inviteTarget?.name ?? ''}|${params.org}/${params.event}`
+                              )}`}
+                            />
+                          ) : (
+                            'QR code'
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          QR encodes: {inviteTarget?.name ?? 'Guest'} | {params.org}/{params.event}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {inviteStatus ? <div className="text-sm text-slate-400">{inviteStatus}</div> : null}
+                  <button
+                    type="button"
+                    className="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-semibold"
+                    onClick={handleSendInvites}
+                    disabled={inviteLoading}
+                  >
+                    {inviteLoading ? 'Sending...' : 'Send WhatsApp invite'}
+                  </button>
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </div>
   );
