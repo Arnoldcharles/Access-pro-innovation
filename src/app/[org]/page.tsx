@@ -238,10 +238,11 @@ export default function OrgDashboardPage() {
             <div className="relative">
               <button
                 type="button"
-                className="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700"
+                className="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 inline-flex items-center gap-2"
                 onClick={() => setOrgMenuOpen((prev) => !prev)}
               >
                 {org?.name ?? 'Switch org'}
+                <span className="text-slate-500">▾</span>
               </button>
               {orgMenuOpen ? (
                 <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-lg text-sm z-20">
@@ -256,18 +257,19 @@ export default function OrgDashboardPage() {
                       {item.name ?? item.slug}
                     </Link>
                   ))}
-                  <Link className="block px-4 py-2 hover:bg-slate-50" href="/onboarding">
+                  <Link className="block px-4 py-2 hover:bg-slate-50" href="/onboarding?newOrg=1">
                     + Add new org
                   </Link>
+                  <button
+                    type="button"
+                    className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-600"
+                    onClick={handleDeleteOrg}
+                  >
+                    Delete org
+                  </button>
                 </div>
               ) : null}
             </div>
-            <button
-              className="px-4 py-2 rounded-full bg-white border border-red-200 text-red-600"
-              onClick={handleDeleteOrg}
-            >
-              Delete org
-            </button>
             <button className="px-4 py-2 rounded-full bg-slate-900 text-white" onClick={handleSignOut}>
               Sign out
             </button>
