@@ -82,7 +82,6 @@ export default function EventDashboardPage() {
   const [inviteMode, setInviteMode] = useState<'single' | 'all'>('single');
   const [inviteTarget, setInviteTarget] = useState<InviteTarget | null>(null);
   const [inviteMessage, setInviteMessage] = useState('');
-  const [inviteImage, setInviteImage] = useState<string>('');
   const [inviteLink, setInviteLink] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteStatus, setInviteStatus] = useState('');
@@ -234,7 +233,6 @@ export default function EventDashboardPage() {
     setInviteMode(mode);
     setInviteTarget(target ?? null);
     setInviteMessage(buildInviteMessage(target?.name ?? 'there'));
-    setInviteImage('');
     setInviteLink('');
     setInviteStatus('');
     setInviteOpen(true);
@@ -248,16 +246,6 @@ export default function EventDashboardPage() {
 
   const closeInviteModal = () => {
     setInviteOpen(false);
-  };
-
-  const handleInviteImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setInviteImage(reader.result);
-    };
-    reader.readAsDataURL(file);
   };
 
   const createToken = () => {
@@ -293,7 +281,15 @@ export default function EventDashboardPage() {
           eventDate: eventData?.date ?? '',
           eventLocation: eventData?.location ?? '',
           message: inviteMessage,
-          imageDataUrl: inviteImage,
+          imageDataUrl: eventData?.imageDataUrl ?? '',
+          qrX: eventData?.qrX ?? 0.1,
+          qrY: eventData?.qrY ?? 0.1,
+          qrSize: eventData?.qrSize ?? 96,
+          nameX: eventData?.nameX ?? 0.1,
+          nameY: eventData?.nameY ?? 0.3,
+          nameColor: eventData?.nameColor ?? '#111827',
+          nameSize: eventData?.nameSize ?? 16,
+          nameFont: eventData?.nameFont ?? 'Arial, sans-serif',
           used: false,
           createdAt: serverTimestamp(),
         });
@@ -321,7 +317,15 @@ export default function EventDashboardPage() {
             eventDate: eventData?.date ?? '',
             eventLocation: eventData?.location ?? '',
             message: buildInviteMessage(guest.name),
-            imageDataUrl: inviteImage,
+            imageDataUrl: eventData?.imageDataUrl ?? '',
+            qrX: eventData?.qrX ?? 0.1,
+            qrY: eventData?.qrY ?? 0.1,
+            qrSize: eventData?.qrSize ?? 96,
+            nameX: eventData?.nameX ?? 0.1,
+            nameY: eventData?.nameY ?? 0.3,
+            nameColor: eventData?.nameColor ?? '#111827',
+            nameSize: eventData?.nameSize ?? 16,
+            nameFont: eventData?.nameFont ?? 'Arial, sans-serif',
             used: false,
             createdAt: serverTimestamp(),
           });
@@ -785,35 +789,55 @@ export default function EventDashboardPage() {
                       onChange={(event) => setInviteMessage(event.target.value)}
                     />
                   </div>
-                  <div>
-                    <label className="text-xs uppercase tracking-widest text-slate-500">Image</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                      onChange={handleInviteImage}
-                    />
-                  </div>
                   {inviteMode === 'single' ? (
                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
                       <div className="text-xs text-slate-500 mb-2">Invite link</div>
                       <div className="text-sm text-blue-400">{inviteLink || 'Link will appear after send.'}</div>
-                      <div className="mt-4 flex items-center gap-4">
-                        <div className="w-28 h-28 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-xs text-slate-500">
-                          {inviteLink ? (
+                      <div className="mt-4">
+                        <div className="text-xs text-slate-500 mb-2">Preview image</div>
+                        <div className="relative w-full h-48 rounded-xl border border-slate-200 overflow-hidden bg-white">
+                          {eventData?.imageDataUrl ? (
+                            <img
+                              src={eventData.imageDataUrl}
+                              alt="Invite preview"
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 bg-slate-50">
+                              No design image yet
+                            </div>
+                          )}
+                          <div
+                            className="absolute"
+                            style={{
+                              left: `${(eventData?.qrX ?? 0.1) * 100}%`,
+                              top: `${(eventData?.qrY ?? 0.1) * 100}%`,
+                              transform: 'translate(-50%, -50%)',
+                              width: eventData?.qrSize ?? 96,
+                              height: eventData?.qrSize ?? 96,
+                            }}
+                          >
                             <img
                               alt="QR code"
-                              className="w-full h-full object-cover rounded-xl"
+                              className="w-full h-full object-cover rounded-xl border border-slate-200 bg-white"
                               src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
                                 `${inviteTarget?.name ?? ''}|${params.org}/${params.event}`
                               )}`}
                             />
-                          ) : (
-                            'QR code'
-                          )}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          QR encodes: {inviteTarget?.name ?? 'Guest'} | {params.org}/{params.event}
+                          </div>
+                          <div
+                            className="absolute px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow text-sm font-semibold"
+                            style={{
+                              left: `${(eventData?.nameX ?? 0.1) * 100}%`,
+                              top: `${(eventData?.nameY ?? 0.3) * 100}%`,
+                              transform: 'translate(-50%, -50%)',
+                              color: eventData?.nameColor ?? '#111827',
+                              fontSize: `${eventData?.nameSize ?? 16}px`,
+                              fontFamily: eventData?.nameFont ?? 'Arial, sans-serif',
+                            }}
+                          >
+                            {inviteTarget?.name ?? 'Guest'}
+                          </div>
                         </div>
                       </div>
                     </div>
