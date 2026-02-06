@@ -2,10 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
+import { useParams, useRouter } from 'next/navigation';
+import { motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, deleteDoc, doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 type OrgData = {
@@ -21,7 +21,6 @@ type UserData = {
 export default function OrgDashboardPage() {
   const router = useRouter();
   const params = useParams<{ org: string }>();
-  const searchParams = useSearchParams();
   const [org, setOrg] = useState<OrgData | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,28 +44,6 @@ export default function OrgDashboardPage() {
   const [page, setPage] = useState(1);
   const pageSize = 6;
   const [eventsUnsub, setEventsUnsub] = useState<null | (() => void)>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [eventName, setEventName] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [eventTime, setEventTime] = useState('');
-  const [location, setLocation] = useState('');
-  const [gatesOpen, setGatesOpen] = useState('');
-  const [peakStart, setPeakStart] = useState('');
-  const [peakEnd, setPeakEnd] = useState('');
-  const [avgScanSeconds, setAvgScanSeconds] = useState('');
-
-  const showCreateEvent = searchParams?.has('create-new-event');
-
-  const slugify = (value: string) =>
-    value
-      .toLowerCase()
-      .trim()
-      .replace(/['"]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '');
-
-  const eventSlugPreview = useMemo(() => slugify(eventName || 'new-event'), [eventName]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -119,69 +96,9 @@ export default function OrgDashboardPage() {
     };
   }, [params, router]);
 
-  useEffect(() => {
-    if (!showCreateEvent) return;
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') handleCloseModal();
-    };
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKey);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKey);
-    };
-  }, [showCreateEvent]);
-
   const handleSignOut = async () => {
     await signOut(auth);
     router.replace('/sign-in');
-  };
-
-  const handleCreateEvent = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setError('');
-    const orgSlug = params?.org;
-    if (!orgSlug) return;
-
-    const baseSlug = slugify(eventName);
-    if (!baseSlug) {
-      setError('Please enter an event name.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      let slug = baseSlug;
-      for (let i = 2; i < 50; i += 1) {
-        const eventSnap = await getDoc(doc(db, 'orgs', orgSlug, 'events', slug));
-        if (!eventSnap.exists()) break;
-        slug = `${baseSlug}-${i}`;
-      }
-
-      const now = serverTimestamp();
-      await setDoc(doc(db, 'orgs', orgSlug, 'events', slug), {
-        name: eventName,
-        slug,
-        date: eventDate,
-        time: eventTime,
-        location,
-        gatesOpen,
-        peakStart,
-        peakEnd,
-        avgScanSeconds: avgScanSeconds ? Number(avgScanSeconds) : 0,
-        createdAt: now,
-        updatedAt: now,
-        status: 'draft',
-      });
-
-      router.replace(`/${orgSlug}/${slug}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to create event';
-      setError(message);
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -191,11 +108,6 @@ export default function OrgDashboardPage() {
     if (!confirmed) return;
     await deleteDoc(doc(db, 'orgs', orgSlug, 'events', eventId));
     setEvents((prev) => prev.filter((item) => item.id !== eventId));
-  };
-
-  const handleCloseModal = () => {
-    if (!params?.org) return;
-    router.replace(`/${params.org}`);
   };
 
   const easeOut = cubicBezier(0.16, 1, 0.3, 1);
@@ -285,135 +197,11 @@ export default function OrgDashboardPage() {
           </div>
           <Link
             className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm"
-            href={`/${params.org}?create-new-event`}
+            href={`/${params.org}/create-new-event`}
           >
             Create event
           </Link>
         </motion.section>
-
-        <AnimatePresence>
-          {showCreateEvent ? (
-            <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center px-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.button
-                type="button"
-                aria-label="Close"
-                className="absolute inset-0 bg-black/70"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={handleCloseModal}
-              />
-              <motion.section
-                initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: easeOut } }}
-                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.2 } }}
-                className="relative z-10 w-full max-w-[640px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl"
-              >
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <h2 className="text-lg font-bold mb-1">Create a new event</h2>
-                    <p className="text-sm text-slate-600">
-                      This event will live at{' '}
-                      <span className="text-blue-400 font-semibold">/{params.org}/{eventSlugPreview}</span>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="text-sm text-slate-500 hover:text-slate-900"
-                    onClick={handleCloseModal}
-                  >
-                    Close
-                  </button>
-                </div>
-
-                <form onSubmit={handleCreateEvent} className="space-y-4">
-                  <input
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                    placeholder="Event name"
-                    value={eventName}
-                    onChange={(event) => setEventName(event.target.value)}
-                    required
-                  />
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <input
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                      placeholder="Event date"
-                      type="date"
-                      value={eventDate}
-                      onChange={(event) => setEventDate(event.target.value)}
-                    />
-                    <input
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                      placeholder="Event time"
-                      type="time"
-                      value={eventTime}
-                      onChange={(event) => setEventTime(event.target.value)}
-                    />
-                  </div>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <input
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                      placeholder="Gates open"
-                      type="time"
-                      value={gatesOpen}
-                      onChange={(event) => setGatesOpen(event.target.value)}
-                    />
-                    <input
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                      placeholder="Peak start"
-                      type="time"
-                      value={peakStart}
-                      onChange={(event) => setPeakStart(event.target.value)}
-                    />
-                    <input
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                      placeholder="Peak end"
-                      type="time"
-                      value={peakEnd}
-                      onChange={(event) => setPeakEnd(event.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <input
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                      placeholder="Location"
-                      value={location}
-                      onChange={(event) => setLocation(event.target.value)}
-                    />
-                  </div>
-                  <input
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                    placeholder="Avg scan seconds"
-                    type="number"
-                    min="0"
-                    value={avgScanSeconds}
-                    onChange={(event) => setAvgScanSeconds(event.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm inline-flex items-center justify-center gap-2"
-                  >
-                    {saving ? (
-                      <>
-                        <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create event'
-                    )}
-                  </button>
-                  {error ? <div className="text-sm text-red-400">{error}</div> : null}
-                </form>
-              </motion.section>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
 
         <section className="grid md:grid-cols-3 gap-6">
           {[

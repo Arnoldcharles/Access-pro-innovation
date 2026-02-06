@@ -55,8 +55,8 @@ export default function ContactPage() {
 
           <motion.div variants={fadeUp} className="space-y-4">
             {[
-              { label: 'Email', value: 'hello@accesspro.io', icon: <Mail size={18} /> },
-              { label: 'Phone', value: '+1 (555) 212-4408', icon: <PhoneCall size={18} /> },
+              { label: 'Email', value: 'accessproinnovation@gmail.com', icon: <Mail size={18} /> },
+              { label: 'Phone', value: '+234 81 3368 9639', icon: <PhoneCall size={18} /> },
               { label: 'HQ', value: 'Austin, TX', icon: <MapPin size={18} /> },
             ].map((item) => (
               <div key={item.label} className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center gap-4 shadow-sm">

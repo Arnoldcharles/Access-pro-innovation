@@ -439,6 +439,14 @@ export default function EventDashboardPage() {
               Avg scan: {eventData?.avgScanSeconds ? `${eventData.avgScanSeconds} sec` : '0'}
             </div>
           </div>
+          <div className="mt-4">
+            <Link
+              className="inline-flex items-center px-4 py-2 rounded-2xl bg-blue-600 text-white text-sm font-semibold"
+              href={`/${params.org}/${params.event}/design`}
+            >
+              Design invite
+            </Link>
+          </div>
         </motion.div>
 
         <section className="grid md:grid-cols-3 gap-6">

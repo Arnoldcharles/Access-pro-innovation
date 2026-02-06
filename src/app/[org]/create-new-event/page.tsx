@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { motion, cubicBezier } from 'framer-motion';
+import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -21,9 +21,11 @@ export default function CreateEventPage() {
   const params = useParams<{ org: string }>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
   const [error, setError] = useState('');
   const [eventName, setEventName] = useState('');
   const [eventDate, setEventDate] = useState('');
+  const [eventTime, setEventTime] = useState('');
   const [location, setLocation] = useState('');
   const [orgName, setOrgName] = useState('');
 
@@ -74,13 +76,16 @@ export default function CreateEventPage() {
         name: eventName,
         slug,
         date: eventDate,
+        time: eventTime,
         location,
         createdAt: now,
         updatedAt: now,
         status: 'draft',
       });
-
-      router.replace(`/${orgSlug}/${slug}`);
+      setTransitioning(true);
+      setTimeout(() => {
+        router.replace(`/${orgSlug}/${slug}/design`);
+      }, 500);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to create event';
       setError(message);
@@ -134,6 +139,15 @@ export default function CreateEventPage() {
               />
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                placeholder="Event time"
+                type="time"
+                value={eventTime}
+                onChange={(event) => setEventTime(event.target.value)}
+              />
+            </div>
+            <div>
+              <input
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
                 placeholder="Location"
                 value={location}
                 onChange={(event) => setLocation(event.target.value)}
@@ -151,6 +165,24 @@ export default function CreateEventPage() {
           {error ? <div className="mt-4 text-sm text-red-400">{error}</div> : null}
         </motion.div>
       </div>
+      <AnimatePresence>
+        {transitioning ? (
+          <motion.div
+            className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-slate-600"
+            >
+              Preparing design view...
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
