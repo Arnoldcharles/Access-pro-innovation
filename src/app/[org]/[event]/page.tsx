@@ -11,6 +11,7 @@ import { auth, db } from '@/lib/firebase';
 type EventData = {
   name?: string;
   date?: string;
+  time?: string;
   location?: string;
   status?: string;
 };
@@ -73,7 +74,9 @@ export default function EventDashboardPage() {
           </Link>
           <h1 className="text-3xl md:text-4xl font-black mt-6 mb-3">{eventData?.name ?? 'Event'}</h1>
           <p className="text-slate-400 mb-8">
-            {eventData?.date ? `Date: ${eventData.date}` : 'Date: TBD'} · {eventData?.location ?? 'Location: TBD'}
+            {eventData?.date ? `Date: ${eventData.date}` : 'Date: TBD'}
+            {eventData?.time ? ` · Time: ${eventData.time}` : ' · Time: TBD'} ·{' '}
+            {eventData?.location ?? 'Location: TBD'}
           </p>
         </motion.div>
 

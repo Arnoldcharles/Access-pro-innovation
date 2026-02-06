@@ -29,6 +29,7 @@ export default function OrgDashboardPage() {
   const [error, setError] = useState('');
   const [eventName, setEventName] = useState('');
   const [eventDate, setEventDate] = useState('');
+  const [eventTime, setEventTime] = useState('');
   const [location, setLocation] = useState('');
 
   const showCreateEvent = searchParams?.has('create-new-event');
@@ -118,6 +119,7 @@ export default function OrgDashboardPage() {
         name: eventName,
         slug,
         date: eventDate,
+        time: eventTime,
         location,
         createdAt: now,
         updatedAt: now,
@@ -242,6 +244,15 @@ export default function OrgDashboardPage() {
                       value={eventDate}
                       onChange={(event) => setEventDate(event.target.value)}
                     />
+                    <input
+                      className="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-3 text-sm"
+                      placeholder="Event time"
+                      type="time"
+                      value={eventTime}
+                      onChange={(event) => setEventTime(event.target.value)}
+                    />
+                  </div>
+                  <div>
                     <input
                       className="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-3 text-sm"
                       placeholder="Location"
