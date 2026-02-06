@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion, cubicBezier } from 'framer-motion';
+import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -28,6 +28,7 @@ export default function OnboardingPage() {
   const [role, setRole] = useState('');
   const [uid, setUid] = useState('');
   const [email, setEmail] = useState('');
+  const [showOrgTaken, setShowOrgTaken] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -76,10 +77,11 @@ export default function OnboardingPage() {
     setSaving(true);
     try {
       let slug = baseSlug;
-      for (let i = 2; i < 50; i += 1) {
-        const orgSnap = await getDoc(doc(db, 'orgs', slug));
-        if (!orgSnap.exists()) break;
-        slug = `${baseSlug}-${i}`;
+      const orgSnap = await getDoc(doc(db, 'orgs', slug));
+      if (orgSnap.exists()) {
+        setShowOrgTaken(true);
+        setSaving(false);
+        return;
       }
 
       const now = serverTimestamp();
@@ -189,15 +191,57 @@ export default function OnboardingPage() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl py-3 transition-colors"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl py-3 transition-colors inline-flex items-center justify-center gap-2"
             >
-              Save and continue
+              {saving ? (
+                <>
+                  <span className="h-4 w-4 rounded-full border-2 border-white/60 border-t-transparent animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save and continue'
+              )}
             </button>
           </form>
 
           {error ? <div className="mt-4 text-sm text-red-400">{error}</div> : null}
         </motion.div>
       </div>
+      <AnimatePresence>
+        {showOrgTaken ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setShowOrgTaken(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Organization name taken</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                That organization name is already in use. Please choose another.
+              </p>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl bg-blue-600 text-white text-sm font-semibold"
+                onClick={() => setShowOrgTaken(false)}
+              >
+                Okay
+              </button>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

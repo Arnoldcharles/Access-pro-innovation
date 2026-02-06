@@ -5,7 +5,17 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 type OrgData = {
@@ -44,6 +54,8 @@ export default function OrgDashboardPage() {
   const [page, setPage] = useState(1);
   const pageSize = 6;
   const [eventsUnsub, setEventsUnsub] = useState<null | (() => void)>(null);
+  const [orgs, setOrgs] = useState<Array<{ slug: string; name?: string }>>([]);
+  const [orgMenuOpen, setOrgMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -89,6 +101,16 @@ export default function OrgDashboardPage() {
         setEventsLoading(false);
       });
       setEventsUnsub(() => unsubEvents);
+
+      const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', firebaseUser.uid));
+      const unsubOrgs = onSnapshot(orgsQuery, (snapshot) => {
+        const items = snapshot.docs.map((docSnap) => ({
+          slug: docSnap.id,
+          ...(docSnap.data() as object),
+        })) as Array<{ slug: string; name?: string }>;
+        setOrgs(items);
+      });
+      return () => unsubOrgs();
     });
     return () => {
       unsub();
@@ -99,6 +121,30 @@ export default function OrgDashboardPage() {
   const handleSignOut = async () => {
     await signOut(auth);
     router.replace('/sign-in');
+  };
+
+  const handleDeleteOrg = async () => {
+    const orgSlug = params?.org;
+    const currentUser = auth.currentUser;
+    if (!orgSlug || !currentUser) return;
+    const confirmed = window.confirm('Delete this organization? This cannot be undone.');
+    if (!confirmed) return;
+    const eventsSnap = await getDocs(collection(db, 'orgs', orgSlug, 'events'));
+    for (const eventDoc of eventsSnap.docs) {
+      const eventId = eventDoc.id;
+      const guestsSnap = await getDocs(collection(db, 'orgs', orgSlug, 'events', eventId, 'guests'));
+      for (const guest of guestsSnap.docs) {
+        await deleteDoc(guest.ref);
+      }
+      const invitesSnap = await getDocs(collection(db, 'orgs', orgSlug, 'events', eventId, 'invites'));
+      for (const invite of invitesSnap.docs) {
+        await deleteDoc(invite.ref);
+      }
+      await deleteDoc(eventDoc.ref);
+    }
+    await deleteDoc(doc(db, 'orgs', orgSlug));
+    await updateDoc(doc(db, 'users', currentUser.uid), { orgSlug: null, orgName: null });
+    router.replace('/onboarding');
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -189,6 +235,39 @@ export default function OrgDashboardPage() {
             <Link className="px-4 py-2 rounded-full bg-slate-100 text-slate-700" href="/">
               Marketing site
             </Link>
+            <div className="relative">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700"
+                onClick={() => setOrgMenuOpen((prev) => !prev)}
+              >
+                {org?.name ?? 'Switch org'}
+              </button>
+              {orgMenuOpen ? (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-lg text-sm z-20">
+                  <div className="px-4 py-2 text-xs text-slate-500">Your organizations</div>
+                  {orgs.map((item) => (
+                    <Link
+                      key={item.slug}
+                      className="block px-4 py-2 hover:bg-slate-50"
+                      href={`/${item.slug}`}
+                      onClick={() => setOrgMenuOpen(false)}
+                    >
+                      {item.name ?? item.slug}
+                    </Link>
+                  ))}
+                  <Link className="block px-4 py-2 hover:bg-slate-50" href="/onboarding">
+                    + Add new org
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+            <button
+              className="px-4 py-2 rounded-full bg-white border border-red-200 text-red-600"
+              onClick={handleDeleteOrg}
+            >
+              Delete org
+            </button>
             <button className="px-4 py-2 rounded-full bg-slate-900 text-white" onClick={handleSignOut}>
               Sign out
             </button>
