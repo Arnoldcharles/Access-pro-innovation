@@ -126,7 +126,10 @@ export default function OnboardingPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white text-slate-900 font-sans antialiased flex items-center justify-center">
-        Loading onboarding...
+        <div className="flex items-center gap-3 text-sm text-slate-600">
+          <span className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-blue-600 animate-spin" />
+          Loading onboarding...
+        </div>
       </div>
     );
   }

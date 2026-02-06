@@ -164,7 +164,12 @@ export default function OrgDashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white text-slate-900 font-sans antialiased flex items-center justify-center">
-        Loading dashboard...
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="h-2 w-2 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.2s]" />
+          <span className="h-2 w-2 rounded-full bg-blue-600 animate-bounce" />
+          <span className="h-2 w-2 rounded-full bg-blue-600 animate-bounce [animation-delay:0.2s]" />
+          Loading dashboard...
+        </div>
       </div>
     );
   }
@@ -262,7 +267,10 @@ export default function OrgDashboardPage() {
             </div>
           </div>
           {eventsLoading ? (
-            <div className="text-sm text-slate-500">Loading events...</div>
+            <div className="text-sm text-slate-500 flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full border-2 border-slate-300 border-t-slate-600 animate-spin" />
+              Loading events...
+            </div>
           ) : filteredEvents.length === 0 ? (
             <div className="text-sm text-slate-500">No events yet. Create your first event.</div>
           ) : (

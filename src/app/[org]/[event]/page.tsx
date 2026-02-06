@@ -35,6 +35,7 @@ type EventData = {
   nameColor?: string;
   nameSize?: number;
   nameFont?: string;
+  nameBg?: boolean;
   status?: string;
 };
 
@@ -432,7 +433,13 @@ export default function EventDashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white text-slate-900 font-sans antialiased flex items-center justify-center">
-        Loading event...
+        <div className="flex items-center gap-3 text-sm text-slate-600">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-600"></span>
+          </span>
+          Loading event...
+        </div>
       </div>
     );
   }
@@ -826,7 +833,9 @@ export default function EventDashboardPage() {
                             />
                           </div>
                           <div
-                            className="absolute px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow text-sm font-semibold"
+                            className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow text-sm font-semibold ${
+                              eventData?.nameBg === false ? 'bg-transparent border-transparent shadow-none' : 'bg-white/90'
+                            }`}
                             style={{
                               left: `${(eventData?.nameX ?? 0.1) * 100}%`,
                               top: `${(eventData?.nameY ?? 0.3) * 100}%`,
@@ -915,7 +924,9 @@ export default function EventDashboardPage() {
                       />
                     </div>
                     <div
-                      className="absolute px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow text-sm font-semibold"
+                      className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow text-sm font-semibold ${
+                        eventData?.nameBg === false ? 'bg-transparent border-transparent shadow-none' : 'bg-white/90'
+                      }`}
                       style={{
                         left: `${(eventData?.nameX ?? 0.1) * 100}%`,
                         top: `${(eventData?.nameY ?? 0.3) * 100}%`,

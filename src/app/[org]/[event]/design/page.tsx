@@ -29,13 +29,14 @@ export default function EventDesignPage() {
   const [eventLocation, setEventLocation] = useState('');
   const [imageDataUrl, setImageDataUrl] = useState<string>('');
   const [qrPos, setQrPos] = useState({ x: 0.1, y: 0.1 });
-  const [qrSize, setQrSize] = useState(96);
   const [namePos, setNamePos] = useState({ x: 0.1, y: 0.3 });
   const [nameColor, setNameColor] = useState('#111827');
   const [nameSize, setNameSize] = useState(16);
   const [nameFont, setNameFont] = useState('Arial, sans-serif');
+  const [nameBg, setNameBg] = useState(true);
   const [dragging, setDragging] = useState<'qr' | 'name' | null>(null);
   const [transitioning, setTransitioning] = useState(false);
+  const [imageAspect, setImageAspect] = useState(3 / 2);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -51,26 +52,18 @@ export default function EventDesignPage() {
         setEventLocation(data.location ?? '');
         if (data.imageDataUrl) setImageDataUrl(data.imageDataUrl);
         if (typeof data.qrX === 'number' && typeof data.qrY === 'number') setQrPos({ x: data.qrX, y: data.qrY });
-        if (typeof data.qrSize === 'number') setQrSize(data.qrSize);
         if (typeof data.nameX === 'number' && typeof data.nameY === 'number') setNamePos({ x: data.nameX, y: data.nameY });
         if (data.nameColor) setNameColor(data.nameColor);
         if (typeof data.nameSize === 'number') setNameSize(data.nameSize);
         if (data.nameFont) setNameFont(data.nameFont);
+        if (typeof (data as DesignData & { nameBg?: boolean }).nameBg === 'boolean') {
+          setNameBg((data as DesignData & { nameBg?: boolean }).nameBg as boolean);
+        }
       }
       setLoading(false);
     };
     load();
   }, [params]);
-
-  const handleImage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setImageDataUrl(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
 
   const toPercent = (value: number, max: number) => Math.min(0.95, Math.max(0.02, value / max));
 
@@ -92,12 +85,12 @@ export default function EventDesignPage() {
       imageDataUrl,
       qrX: qrPos.x,
       qrY: qrPos.y,
-      qrSize,
       nameX: namePos.x,
       nameY: namePos.y,
       nameColor,
       nameSize,
       nameFont,
+      nameBg,
     });
     setSaving(false);
     setTransitioning(true);
@@ -111,7 +104,10 @@ export default function EventDesignPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center">
-        Loading design...
+        <div className="flex items-center gap-3 text-sm text-slate-600">
+          <span className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-transparent animate-spin" />
+          Loading design...
+        </div>
       </div>
     );
   }
@@ -138,7 +134,8 @@ export default function EventDesignPage() {
           >
             <div
               ref={containerRef}
-              className="relative w-full aspect-[3/2] bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden"
+              className="relative w-full bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden"
+              style={{ aspectRatio: imageAspect }}
             >
               {imageDataUrl ? (
                 <img src={imageDataUrl} alt="Event design" className="absolute inset-0 w-full h-full object-cover" />
@@ -155,14 +152,16 @@ export default function EventDesignPage() {
                 <img
                   alt="QR code"
                   className="object-cover rounded-xl"
-                  style={{ width: qrSize, height: qrSize }}
+                  style={{ width: 96, height: 96 }}
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
                     `Guest Name|${params.org}/${params.event}`
                   )}`}
                 />
               </div>
               <div
-                className="absolute px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow cursor-grab text-sm font-semibold"
+                className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow cursor-grab text-sm font-semibold ${
+                  nameBg ? 'bg-white/90' : 'bg-transparent border-transparent shadow-none'
+                }`}
                 style={{
                   left: `${namePos.x * 100}%`,
                   top: `${namePos.y * 100}%`,
@@ -185,7 +184,22 @@ export default function EventDesignPage() {
                 type="file"
                 accept="image/*"
                 className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                onChange={handleImage}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const img = new Image();
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    if (typeof reader.result === 'string') {
+                      img.onload = () => {
+                        if (img.width && img.height) setImageAspect(img.width / img.height);
+                        setImageDataUrl(reader.result as string);
+                      };
+                      img.src = reader.result as string;
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }}
               />
             </div>
             <div>
@@ -198,17 +212,6 @@ export default function EventDesignPage() {
               />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">QR size</label>
-                <input
-                  type="range"
-                  min="60"
-                  max="160"
-                  value={qrSize}
-                  onChange={(event) => setQrSize(Number(event.target.value))}
-                  className="w-full"
-                />
-              </div>
               <div>
                 <label className="text-xs uppercase tracking-widest text-slate-500">Name size</label>
                 <input
@@ -234,6 +237,15 @@ export default function EventDesignPage() {
                 <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
                 <option value="'Courier New', monospace">Courier New</option>
               </select>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                id="name-bg"
+                type="checkbox"
+                checked={nameBg}
+                onChange={(event) => setNameBg(event.target.checked)}
+              />
+              <label htmlFor="name-bg">Show background behind name</label>
             </div>
             <div className="text-sm text-slate-600">
               Event: {eventName} - {eventDate} - {eventLocation}
