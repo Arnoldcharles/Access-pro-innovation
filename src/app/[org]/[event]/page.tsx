@@ -508,27 +508,29 @@ export default function EventDashboardPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="grid sm:grid-cols-[1fr,1fr,1fr,auto] gap-3 text-sm items-center">
+                        <div className="grid sm:grid-cols-3 gap-3 text-sm items-center">
                           <div>{guest.name || 'Unnamed'}</div>
                           <div className="text-slate-400">{guest.phone || 'No phone'}</div>
-                          <div className="text-slate-400">{guest.email || 'No email'}</div>
-                          <div className="flex items-center gap-3 text-sm justify-end">
-                            {!isPending ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-slate-400">{guest.email || 'No email'}</span>
+                            <div className="flex items-center gap-3 text-sm">
+                              {!isPending ? (
+                                <button
+                                  type="button"
+                                  className="text-blue-400 hover:text-blue-300"
+                                  onClick={() => startEdit(guest)}
+                                >
+                                  Edit
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
-                                className="text-blue-400 hover:text-blue-300"
-                                onClick={() => startEdit(guest)}
+                                className="text-red-400 hover:text-red-300"
+                                onClick={() => handleDeleteGuest(guest, index)}
                               >
-                                Edit
+                                Delete
                               </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="text-red-400 hover:text-red-300"
-                              onClick={() => handleDeleteGuest(guest, index)}
-                            >
-                              Delete
-                            </button>
+                            </div>
                           </div>
                         </div>
                       )}
