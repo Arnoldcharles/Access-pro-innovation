@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
   QrCode,
   Zap,
@@ -16,6 +19,16 @@ import {
 } from 'lucide-react';
 
 const FixedLandingPage = () => {
+  const easeOut = [0.16, 1, 0.3, 1] as const;
+  const fadeUp = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: easeOut } },
+  };
+  const stagger = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
+  };
+
   return (
     /* 1. The Root: 'overflow-hidden' prevents horizontal scroll.
        2. The Wrapper: 'max-w-[1400px]' keeps it from getting too wide on huge monitors.
@@ -26,7 +39,12 @@ const FixedLandingPage = () => {
       <div className="max-w-[1300px] mx-auto px-6 sm:px-10 lg:px-16">
         
         {/* Navigation - Added top margin so it doesn't touch the top browser bar */}
-        <nav className="flex items-center justify-between py-10">
+        <motion.nav
+          initial="hidden"
+          animate="show"
+          variants={fadeUp}
+          className="flex items-center justify-between py-10"
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold shadow-lg shadow-blue-500/20">A</div>
             <span className="font-bold text-xl tracking-tight">AccessPro <span className="text-blue-500 text-[10px] ml-1 uppercase">Beta</span></span>
@@ -39,11 +57,16 @@ const FixedLandingPage = () => {
             <Link className="hover:text-white transition-colors" href="/contact">Contact</Link>
           </div>
           <Link className="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="/contact">Sign In</Link>
-        </nav>
+        </motion.nav>
 
         {/* Hero Section */}
-        <section className="py-12 lg:py-20 grid lg:grid-cols-2 gap-16 items-center">
-          <div className="space-y-8">
+        <motion.section
+          initial="hidden"
+          animate="show"
+          variants={stagger}
+          className="py-12 lg:py-20 grid lg:grid-cols-2 gap-16 items-center"
+        >
+          <motion.div variants={fadeUp} className="space-y-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-400">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
               Now powering 500+ events
@@ -68,10 +91,10 @@ const FixedLandingPage = () => {
                 View Features
               </Link>
             </div>
-          </div>
+          </motion.div>
 
           {/* Glass Card Preview */}
-          <div className="relative group lg:ml-auto w-full max-w-md">
+          <motion.div variants={fadeUp} className="relative group lg:ml-auto w-full max-w-md">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-[2rem] blur opacity-20"></div>
             <div className="relative bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-2xl">
               <div className="flex justify-between items-center mb-8">
@@ -96,37 +119,53 @@ const FixedLandingPage = () => {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
         {/* Workflow Section */}
-        <section className="py-24">
-          <div className="text-center mb-16">
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="py-24"
+        >
+          <motion.div variants={fadeUp} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold mb-4">The complete event workflow</h2>
             <p className="text-slate-500">Everything you need to handle guests at scale.</p>
-          </div>
-          <div className="grid md:grid-cols-4 gap-6">
+          </motion.div>
+          <motion.div variants={stagger} className="grid md:grid-cols-4 gap-6">
             {[
               { title: 'Collect RSVPs', icon: <Users /> },
               { title: 'Generate Passes', icon: <QrCode /> },
               { title: 'Scan at Entry', icon: <Zap /> },
               { title: 'Track & Export', icon: <BarChart3 /> },
             ].map((item, i) => (
-              <div key={i} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] hover:border-blue-500/50 transition-colors group">
+              <motion.div
+                key={i}
+                variants={fadeUp}
+                className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] hover:border-blue-500/50 transition-colors group"
+              >
                 <div className="w-12 h-12 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all">
                   {item.icon}
                 </div>
                 <h4 className="font-bold text-lg mb-2">{item.title}</h4>
                 <p className="text-sm text-slate-500 leading-relaxed">Instant confirmation and data syncing across all devices.</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
         {/* Process Flow Section */}
-        <section className="pb-24">
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="pb-24"
+        >
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
+            <motion.div variants={fadeUp} className="space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-300">
                 <Sparkles size={14} />
                 Process flow
@@ -149,9 +188,9 @@ const FixedLandingPage = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
-            <div className="space-y-5">
+            <motion.div variants={fadeUp} className="space-y-5">
               {[
                 {
                   title: 'Plan & build',
@@ -185,14 +224,20 @@ const FixedLandingPage = () => {
                   </div>
                 </div>
               ))}
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Insights Section */}
-        <section className="pb-24">
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="pb-24"
+        >
           <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div className="bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-8 md:p-10">
+            <motion.div variants={fadeUp} className="bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-8 md:p-10">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600/10 text-blue-400 rounded-xl flex items-center justify-center">
@@ -231,9 +276,9 @@ const FixedLandingPage = () => {
                   Export to CRM and post-event emails
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="space-y-6">
+            <motion.div variants={fadeUp} className="space-y-6">
               <h3 className="text-3xl md:text-4xl font-black">More than check-in. This is operational clarity.</h3>
               <p className="text-slate-400 text-lg leading-relaxed">
                 Run complex events with confidence. Monitor entry speed, manage staff assignments, and keep stakeholders updated without
@@ -262,17 +307,23 @@ const FixedLandingPage = () => {
                   View pricing
                 </Link>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Trust Section */}
-        <section className="pb-24">
-          <div className="text-center mb-12">
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="pb-24"
+        >
+          <motion.div variants={fadeUp} className="text-center mb-12">
             <h3 className="text-3xl md:text-4xl font-black">Trusted for secure, high-volume events</h3>
             <p className="text-slate-500 mt-3">Built with enterprise-grade protections and 24/7 monitoring.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          </motion.div>
+          <motion.div variants={stagger} className="grid md:grid-cols-3 gap-6">
             {[
               {
                 title: 'Data encryption',
@@ -290,29 +341,35 @@ const FixedLandingPage = () => {
                 icon: <Zap />,
               },
             ].map((item) => (
-              <div key={item.title} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem]">
+              <motion.div key={item.title} variants={fadeUp} className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem]">
                 <div className="w-12 h-12 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center mb-6">
                   {item.icon}
                 </div>
                 <h4 className="font-bold text-lg mb-2">{item.title}</h4>
                 <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
-          <div className="mt-10 text-center">
+          </motion.div>
+          <motion.div variants={fadeUp} className="mt-10 text-center">
             <Link className="text-sm font-semibold text-blue-400 hover:text-blue-300 inline-flex items-center gap-2" href="/security">
               Learn about security <ArrowRight size={14} />
             </Link>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
         {/* FAQ Section */}
-        <section className="pb-24">
-          <div className="text-center mb-12">
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="pb-24"
+        >
+          <motion.div variants={fadeUp} className="text-center mb-12">
             <h3 className="text-3xl md:text-4xl font-black">Frequently asked questions</h3>
             <p className="text-slate-500 mt-3">Everything teams ask before launch day.</p>
-          </div>
-          <div className="grid lg:grid-cols-2 gap-6">
+          </motion.div>
+          <motion.div variants={stagger} className="grid lg:grid-cols-2 gap-6">
             {[
               {
                 q: 'Can we run multiple entrances at once?',
@@ -331,17 +388,23 @@ const FixedLandingPage = () => {
                 a: 'AccessPro supports CSV exports, Zapier workflows, and a secure API for custom pipelines.',
               },
             ].map((item) => (
-              <div key={item.q} className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800">
+              <motion.div key={item.q} variants={fadeUp} className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800">
                 <div className="font-semibold mb-2">{item.q}</div>
                 <p className="text-sm text-slate-500 leading-relaxed">{item.a}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
 
         {/* CTA Footer Section - Added Bottom Margin to keep it off the very bottom edge */}
-        <section className="mb-20">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[3rem] p-12 md:p-20 text-center relative overflow-hidden">
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={fadeUp}
+          className="mb-20"
+        >
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[3rem] p-10 sm:p-12 md:p-20 text-center relative overflow-hidden">
              <div className="relative z-10">
               <h2 className="text-4xl md:text-5xl font-black text-white mb-6">Ready to transform your events?</h2>
               <p className="text-blue-100/70 max-w-xl mx-auto text-lg mb-10 leading-relaxed">
@@ -353,7 +416,7 @@ const FixedLandingPage = () => {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         <footer className="py-10 border-t border-white/5 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">
           &copy; 2026 AccessPro Innovation. All Rights Reserved.

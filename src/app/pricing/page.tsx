@@ -1,25 +1,35 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function PricingPage() {
+  const easeOut = [0.16, 1, 0.3, 1] as const;
+  const fadeUp = {
+    hidden: { opacity: 0, y: 18 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: easeOut } },
+  };
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } } };
+
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
-        <nav className="flex items-center justify-between mb-16">
+        <motion.nav initial="hidden" animate="show" variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-16">
           <Link className="flex items-center gap-3" href="/">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold shadow-lg shadow-blue-500/20">A</div>
             <span className="font-bold text-xl tracking-tight">AccessPro</span>
           </Link>
-          <div className="flex items-center gap-6 text-sm font-medium text-slate-400">
+          <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-400">
             <Link className="hover:text-white transition-colors" href="/features">Features</Link>
             <Link className="hover:text-white transition-colors" href="/workflow">Workflow</Link>
             <Link className="hover:text-white transition-colors" href="/security">Security</Link>
             <Link className="hover:text-white transition-colors" href="/contact">Contact</Link>
           </div>
-        </nav>
+        </motion.nav>
 
-        <header className="text-center mb-16">
+        <motion.header initial="hidden" animate="show" variants={stagger} className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-400 mb-4">
             Pricing
           </div>
@@ -27,9 +37,9 @@ export default function PricingPage() {
           <p className="text-slate-400 mt-4 max-w-2xl mx-auto text-lg leading-relaxed">
             Choose a plan that matches your audience size, support needs, and analytics depth.
           </p>
-        </header>
+        </motion.header>
 
-        <section className="grid lg:grid-cols-3 gap-8">
+        <motion.section initial="hidden" animate="show" variants={stagger} className="grid lg:grid-cols-3 gap-8">
           {[
             {
               title: 'Starter',
@@ -51,8 +61,9 @@ export default function PricingPage() {
               features: ['Unlimited guests', 'Dedicated success team', 'SSO & advanced security', 'SLA + 24/7 support'],
             },
           ].map((tier) => (
-            <div
+            <motion.div
               key={tier.title}
+              variants={fadeUp}
               className={`p-8 rounded-[2rem] border ${
                 tier.highlight ? 'bg-blue-600/10 border-blue-500/50' : 'bg-slate-900/50 border-slate-800'
               }`}
@@ -85,13 +96,13 @@ export default function PricingPage() {
               >
                 Talk to sales <ArrowRight size={14} />
               </Link>
-            </div>
+            </motion.div>
           ))}
-        </section>
+        </motion.section>
 
-        <section className="mt-16 text-center text-sm text-slate-500">
+        <motion.section initial="hidden" animate="show" variants={fadeUp} className="mt-16 text-center text-sm text-slate-500">
           All plans include GDPR-ready data handling, unlimited staff users, and standard reporting.
-        </section>
+        </motion.section>
       </div>
     </div>
   );

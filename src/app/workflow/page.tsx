@@ -1,25 +1,35 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { CalendarCheck, Users, ScanLine, BarChart3, ArrowRight } from 'lucide-react';
 
 export default function WorkflowPage() {
+  const easeOut = [0.16, 1, 0.3, 1] as const;
+  const fadeUp = {
+    hidden: { opacity: 0, y: 18 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: easeOut } },
+  };
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } } };
+
   return (
     <div className="min-h-screen bg-[#030712] text-slate-100 font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
-        <nav className="flex items-center justify-between mb-16">
+        <motion.nav initial="hidden" animate="show" variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-16">
           <Link className="flex items-center gap-3" href="/">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold shadow-lg shadow-blue-500/20">A</div>
             <span className="font-bold text-xl tracking-tight">AccessPro</span>
           </Link>
-          <div className="flex items-center gap-6 text-sm font-medium text-slate-400">
+          <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-400">
             <Link className="hover:text-white transition-colors" href="/features">Features</Link>
             <Link className="hover:text-white transition-colors" href="/pricing">Pricing</Link>
             <Link className="hover:text-white transition-colors" href="/security">Security</Link>
             <Link className="hover:text-white transition-colors" href="/contact">Contact</Link>
           </div>
-        </nav>
+        </motion.nav>
 
-        <header className="mb-16">
+        <motion.header initial="hidden" animate="show" variants={stagger} className="mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-300 mb-4">
             Process flow
           </div>
@@ -27,9 +37,9 @@ export default function WorkflowPage() {
           <p className="text-slate-400 mt-4 max-w-2xl text-lg leading-relaxed">
             AccessPro connects every phase of your event journey, from planning to post-event reporting.
           </p>
-        </header>
+        </motion.header>
 
-        <section className="space-y-6">
+        <motion.section initial="hidden" animate="show" variants={stagger} className="space-y-6">
           {[
             {
               step: 'Step 1',
@@ -60,7 +70,7 @@ export default function WorkflowPage() {
               bullets: ['Arrival curve reports', 'Dwell-time tracking', 'CSV and PDF exports'],
             },
           ].map((item) => (
-            <div key={item.title} className="p-8 bg-slate-900/50 border border-slate-800 rounded-[2rem]">
+            <motion.div key={item.title} variants={fadeUp} className="p-8 bg-slate-900/50 border border-slate-800 rounded-[2rem]">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-11 h-11 rounded-xl bg-blue-600/10 text-blue-400 flex items-center justify-center">
                   {item.icon}
@@ -78,15 +88,15 @@ export default function WorkflowPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </section>
+        </motion.section>
 
-        <section className="mt-16 text-center">
+        <motion.section initial="hidden" animate="show" variants={fadeUp} className="mt-16 text-center">
           <Link className="inline-flex items-center gap-2 text-blue-400 font-semibold hover:text-blue-300" href="/pricing">
             See plans built for your workflow <ArrowRight size={14} />
           </Link>
-        </section>
+        </motion.section>
       </div>
     </div>
   );
