@@ -76,7 +76,7 @@ export default function OrgDashboardPage() {
         return;
       }
 
-      setOrg(orgSnap.data() as OrgData);
+      setOrg(orgSnap.data() as OrgData); 
 
       setLoading(false);
       setEventsLoading(true);
