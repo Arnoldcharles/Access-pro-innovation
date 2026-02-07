@@ -31,10 +31,12 @@ export default function OrgDeletedPage() {
       }
       const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', user.uid));
       const unsubOrgs = onSnapshot(orgsQuery, (snapshot) => {
-        const items = snapshot.docs.map((docSnap) => ({
-          slug: docSnap.id,
-          ...(docSnap.data() as object),
-        })) as OrgItem[];
+        const items = snapshot.docs
+          .map((docSnap) => ({
+            slug: docSnap.id,
+            ...(docSnap.data() as object),
+          }))
+          .filter((item) => !(item as { deletedAt?: unknown }).deletedAt) as OrgItem[];
         setOrgs(items);
         setLoading(false);
         if (items.length === 0) router.replace('/onboarding');
@@ -83,10 +85,13 @@ export default function OrgDeletedPage() {
       await deleteDoc(eventDoc.ref);
     }
     await deleteDoc(orgRef);
-    const remaining = orgs.filter((item) => item.slug !== deletedSlug);
-    if (remaining.length === 0) {
-      router.replace('/onboarding');
-    }
+    const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', auth.currentUser?.uid ?? ''));
+    const remainingSnap = await getDocs(orgsQuery);
+    const remaining = remainingSnap.docs
+      .map((docSnap) => ({ slug: docSnap.id, ...(docSnap.data() as object) }))
+      .filter((item) => !(item as { deletedAt?: unknown }).deletedAt)
+      .filter((item) => item.slug !== deletedSlug);
+    if (remaining.length === 0) router.replace('/onboarding');
   };
 
   const handleRestore = async () => {
@@ -132,6 +137,15 @@ export default function OrgDeletedPage() {
             </button>
           </div>
           <div className="space-y-2">
+            <div className="w-full text-left px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50 text-amber-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold">{deletedSlug || 'Deleted organization'}</div>
+                  <div className="text-xs">Deletion in progress</div>
+                </div>
+                <div className="text-sm font-semibold">{countdown}s</div>
+              </div>
+            </div>
             {orgs.map((item) => (
               <button
                 key={item.slug}
