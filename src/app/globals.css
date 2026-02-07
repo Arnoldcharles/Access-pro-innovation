@@ -24,3 +24,36 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes confetti-burst {
+  0% {
+    transform: translateY(0) scale(0.2);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-30px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(220px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti {
+  animation:
+    confetti-burst 0.6s ease-out 1,
+    confetti-fall 4.2s ease-out infinite;
+  animation-delay: 0s, 1.6s;
+}

@@ -152,7 +152,9 @@ export default function OrgDashboardPage() {
     const currentUser = auth.currentUser;
     if (!orgSlug || !currentUser) return;
     const currentName = org?.name ?? orgSlug;
-    if (deleteInput.trim() !== currentName) return;
+    const normalizedInput = deleteInput.trim().toLowerCase();
+    const normalizedName = currentName.trim().toLowerCase();
+    if (normalizedInput !== normalizedName) return;
     const eventsSnap = await getDocs(collection(db, 'orgs', orgSlug, 'events'));
     for (const eventDoc of eventsSnap.docs) {
       const eventId = eventDoc.id;
@@ -549,7 +551,9 @@ export default function OrgDashboardPage() {
                 type="button"
                 className="px-4 py-2 rounded-2xl bg-red-600 text-white disabled:opacity-40"
                 onClick={confirmDeleteOrg}
-                disabled={deleteInput.trim() !== (org?.name ?? params?.org)}
+                disabled={
+                  deleteInput.trim().toLowerCase() !== (org?.name ?? params?.org ?? '').trim().toLowerCase()
+                }
               >
                 Delete org
               </button>

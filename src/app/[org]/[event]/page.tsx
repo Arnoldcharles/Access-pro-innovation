@@ -156,7 +156,7 @@ export default function EventDashboardPage() {
     }
     setPendingGuests((prev) => [
       ...prev,
-      { name: guestName.trim(), phone: guestPhone.trim(), email: guestEmail.trim() },
+      { name: guestName.trim(), phone: guestPhone.trim(), email: guestEmail.trim(), status: 'invited', checkedIn: false },
     ]);
     setGuestName('');
     setGuestPhone('');
@@ -174,7 +174,7 @@ export default function EventDashboardPage() {
     const startIndex = hasHeader ? 1 : 0;
     return lines.slice(startIndex).map((line) => {
       const [name = '', phone = '', email = ''] = line.split(',').map((value) => value.trim());
-      return { name, phone, email };
+      return { name, phone, email, status: 'invited', checkedIn: false };
     });
   };
 
@@ -215,6 +215,8 @@ export default function EventDashboardPage() {
           name: guest.name,
           phone: guest.phone,
           email: guest.email,
+          status: guest.status ?? 'invited',
+          checkedIn: guest.checkedIn ?? false,
           createdAt: new Date().toISOString(),
         });
       });
@@ -478,6 +480,12 @@ export default function EventDashboardPage() {
             >
               Design invite
             </Link>
+            <Link
+              className="inline-flex items-center px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm font-semibold ml-3"
+              href={`/${params.org}/${params.event}/scan`}
+            >
+              Open scanner
+            </Link>
           </div>
         </motion.div>
 
@@ -673,11 +681,14 @@ export default function EventDashboardPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="grid sm:grid-cols-3 gap-3 text-sm items-center">
+                        <div className="grid sm:grid-cols-4 gap-3 text-sm items-center">
                           <div>{guest.name || 'Unnamed'}</div>
                           <div className="text-slate-400">{guest.phone || 'No phone'}</div>
+                          <div className="text-slate-400">{guest.email || 'No email'}</div>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-slate-400">{guest.email || 'No email'}</span>
+                            <div className="text-xs text-slate-500">
+                              {guest.status ?? 'invited'} {guest.checkedIn ? '· Checked-in' : ''}
+                            </div>
                             <div className="relative">
                               <button
                                 type="button"
