@@ -47,6 +47,7 @@ type Guest = {
   status?: 'invited' | 'accepted' | 'declined';
   checkedIn?: boolean;
   checkedInAt?: string;
+  checkInCount?: number;
 };
 
 type InviteTarget = {
@@ -156,7 +157,14 @@ export default function EventDashboardPage() {
     }
     setPendingGuests((prev) => [
       ...prev,
-      { name: guestName.trim(), phone: guestPhone.trim(), email: guestEmail.trim(), status: 'invited', checkedIn: false },
+      {
+        name: guestName.trim(),
+        phone: guestPhone.trim(),
+        email: guestEmail.trim(),
+        status: 'invited',
+        checkedIn: false,
+        checkInCount: 0,
+      },
     ]);
     setGuestName('');
     setGuestPhone('');
@@ -174,7 +182,7 @@ export default function EventDashboardPage() {
     const startIndex = hasHeader ? 1 : 0;
     return lines.slice(startIndex).map((line) => {
       const [name = '', phone = '', email = ''] = line.split(',').map((value) => value.trim());
-      return { name, phone, email, status: 'invited', checkedIn: false };
+      return { name, phone, email, status: 'invited', checkedIn: false, checkInCount: 0 };
     });
   };
 
@@ -217,6 +225,7 @@ export default function EventDashboardPage() {
           email: guest.email,
           status: guest.status ?? 'invited',
           checkedIn: guest.checkedIn ?? false,
+          checkInCount: guest.checkInCount ?? 0,
           createdAt: new Date().toISOString(),
         });
       });
@@ -687,7 +696,7 @@ export default function EventDashboardPage() {
                           <div className="text-slate-400">{guest.email || 'No email'}</div>
                           <div className="flex items-center justify-between gap-3">
                             <div className="text-xs text-slate-500">
-                              {guest.status ?? 'invited'} {guest.checkedIn ? '· Checked-in' : ''}
+                              {guest.status ?? 'invited'} {guest.checkedIn ? `· Checked-in (${guest.checkInCount ?? 0}/2)` : ''}
                             </div>
                             <div className="relative">
                               <button
