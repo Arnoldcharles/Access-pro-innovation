@@ -5,7 +5,16 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  query,
+  serverTimestamp,
+  writeBatch,
+} from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 const slugify = (value: string) =>
@@ -28,6 +37,12 @@ export default function CreateEventPage() {
   const [eventTime, setEventTime] = useState('');
   const [location, setLocation] = useState('');
   const [orgName, setOrgName] = useState('');
+  const [uid, setUid] = useState('');
+  const [eventCount, setEventCount] = useState(0);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const maxEvents = 5;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -35,6 +50,7 @@ export default function CreateEventPage() {
         router.replace('/sign-in');
         return;
       }
+      setUid(user.uid);
       const orgSlug = params?.org;
       if (!orgSlug) return;
       const orgSnap = await getDoc(doc(db, 'orgs', orgSlug));
@@ -43,6 +59,8 @@ export default function CreateEventPage() {
         return;
       }
       setOrgName((orgSnap.data().name as string) ?? '');
+      const eventsSnap = await getDocs(query(collection(db, 'orgs', orgSlug, 'events')));
+      setEventCount(eventsSnap.docs.length);
       setLoading(false);
     });
     return () => unsub();
@@ -64,6 +82,11 @@ export default function CreateEventPage() {
 
     setSaving(true);
     try {
+      if (isFree && eventCount >= maxEvents) {
+        setUpgradeOpen(true);
+        setSaving(false);
+        return;
+      }
       let slug = baseSlug;
       for (let i = 2; i < 50; i += 1) {
         const eventSnap = await getDoc(doc(db, 'orgs', orgSlug, 'events', slug));
@@ -72,7 +95,8 @@ export default function CreateEventPage() {
       }
 
       const now = serverTimestamp();
-      await setDoc(doc(db, 'orgs', orgSlug, 'events', slug), {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'orgs', orgSlug, 'events', slug), {
         name: eventName,
         slug,
         date: eventDate,
@@ -81,7 +105,10 @@ export default function CreateEventPage() {
         createdAt: now,
         updatedAt: now,
         status: 'draft',
+        guestCount: 0,
       });
+      batch.set(doc(db, 'orgs', orgSlug), { eventCount: increment(1) }, { merge: true });
+      await batch.commit();
       setTransitioning(true);
       setTimeout(() => {
         router.replace(`/${orgSlug}/${slug}/design`);
@@ -182,6 +209,46 @@ export default function CreateEventPage() {
               className="text-sm text-slate-600"
             >
               Preparing design view...
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {upgradeOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setUpgradeOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Free mode allows up to {maxEvents} events per organization. Upgrade to create more.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                  onClick={() => setUpgradeOpen(false)}
+                >
+                  Not now
+                </button>
+                <Link className="px-4 py-2 rounded-2xl bg-blue-600 text-white" href={`/${params.org}/pricing`}>
+                  View pricing
+                </Link>
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

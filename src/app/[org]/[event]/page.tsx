@@ -10,6 +10,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  increment,
   onSnapshot,
   serverTimestamp,
   updateDoc,
@@ -22,10 +23,9 @@ type EventData = {
   date?: string;
   time?: string;
   location?: string;
-  gatesOpen?: string;
-  peakStart?: string;
-  peakEnd?: string;
-  avgScanSeconds?: number;
+  gatesOpenAt?: string;
+  scanTotalMs?: number;
+  scanCount?: number;
   imageDataUrl?: string;
   qrX?: number;
   qrY?: number;
@@ -41,6 +41,8 @@ type EventData = {
 
 type Guest = {
   id?: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   phone: string;
   email: string;
@@ -68,19 +70,17 @@ export default function EventDashboardPage() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
-  const [gatesOpen, setGatesOpen] = useState('');
-  const [peakStart, setPeakStart] = useState('');
-  const [peakEnd, setPeakEnd] = useState('');
-  const [avgScanSeconds, setAvgScanSeconds] = useState('');
   const [guests, setGuests] = useState<Guest[]>([]);
   const [pendingGuests, setPendingGuests] = useState<Guest[]>([]);
-  const [guestName, setGuestName] = useState('');
+  const [guestFirstName, setGuestFirstName] = useState('');
+  const [guestLastName, setGuestLastName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestError, setGuestError] = useState('');
   const [guestSaving, setGuestSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -93,6 +93,12 @@ export default function EventDashboardPage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardGuest, setCardGuest] = useState<Guest | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [uid, setUid] = useState('');
+  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const maxGuests = 500;
+  const maxScans = isFree ? 5 : Number.MAX_SAFE_INTEGER;
+  const maxScansLabel = isFree ? String(maxScans) : '∞';
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -100,6 +106,7 @@ export default function EventDashboardPage() {
         router.replace('/sign-in');
         return;
       }
+      setUid(user.uid);
       const orgSlug = params?.org;
       const eventSlug = params?.event;
       if (!orgSlug || !eventSlug) return;
@@ -110,7 +117,6 @@ export default function EventDashboardPage() {
         return;
       }
       setOrgName((orgSnap.data().name as string) ?? '');
-
       const eventSnap = await getDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug));
       if (!eventSnap.exists()) {
         router.replace(`/${orgSlug}`);
@@ -122,18 +128,25 @@ export default function EventDashboardPage() {
       setDate(data.date ?? '');
       setTime(data.time ?? '');
       setLocation(data.location ?? '');
-      setGatesOpen(data.gatesOpen ?? '');
-      setPeakStart(data.peakStart ?? '');
-      setPeakEnd(data.peakEnd ?? '');
-      setAvgScanSeconds(data.avgScanSeconds ? String(data.avgScanSeconds) : '');
+      if (!data.gatesOpenAt) {
+        await updateDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug), { gatesOpenAt: new Date().toISOString() });
+      }
       const guestsRef = collection(db, 'orgs', orgSlug, 'events', eventSlug, 'guests');
-      const unsubGuests = onSnapshot(guestsRef, (snapshot) => {
-        const items = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...(docSnap.data() as object),
-        })) as Guest[];
-        setGuests(items);
-      });
+      const unsubGuests = onSnapshot(
+        guestsRef,
+        (snapshot) => {
+          const items = snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...(docSnap.data() as object),
+          })) as Guest[];
+          setGuests(items);
+        },
+        (err) => {
+          const code = (err as { code?: string }).code;
+          if (code === 'permission-denied') return;
+          console.error(err);
+        }
+      );
 
       setLoading(false);
       return () => unsubGuests();
@@ -148,17 +161,25 @@ export default function EventDashboardPage() {
   };
 
   const combinedGuests = useMemo(() => [...guests, ...pendingGuests], [guests, pendingGuests]);
+  const totalGuestCount = guests.length + pendingGuests.length;
 
   const handleAddGuest = () => {
     setGuestError('');
-    if (!guestName.trim() || !guestEmail.trim()) {
-      setGuestError('Name and email are required.');
+    if (isFree && totalGuestCount >= maxGuests) {
+      setUpgradeOpen(true);
       return;
     }
+    if (!guestFirstName.trim() || !guestLastName.trim() || !guestPhone.trim()) {
+      setGuestError('First name, last name, and phone number are required.');
+      return;
+    }
+    const fullName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
     setPendingGuests((prev) => [
       ...prev,
       {
-        name: guestName.trim(),
+        firstName: guestFirstName.trim(),
+        lastName: guestLastName.trim(),
+        name: fullName,
         phone: guestPhone.trim(),
         email: guestEmail.trim(),
         status: 'invited',
@@ -166,7 +187,8 @@ export default function EventDashboardPage() {
         checkInCount: 0,
       },
     ]);
-    setGuestName('');
+    setGuestFirstName('');
+    setGuestLastName('');
     setGuestPhone('');
     setGuestEmail('');
   };
@@ -181,8 +203,9 @@ export default function EventDashboardPage() {
     const hasHeader = header.includes('name') || header.includes('email') || header.includes('phone');
     const startIndex = hasHeader ? 1 : 0;
     return lines.slice(startIndex).map((line) => {
-      const [name = '', phone = '', email = ''] = line.split(',').map((value) => value.trim());
-      return { name, phone, email, status: 'invited', checkedIn: false, checkInCount: 0 };
+      const [firstName = '', lastName = '', phone = '', email = ''] = line.split(',').map((value) => value.trim());
+      const name = `${firstName} ${lastName}`.trim();
+      return { firstName, lastName, name, phone, email, status: 'invited', checkedIn: false, checkInCount: 0 };
     });
   };
 
@@ -204,6 +227,19 @@ export default function EventDashboardPage() {
       setGuestError('No guests found in the CSV.');
       return;
     }
+    if (isFree) {
+      const remaining = Math.max(0, maxGuests - totalGuestCount);
+      if (remaining <= 0) {
+        setUpgradeOpen(true);
+        return;
+      }
+      const sliced = parsed.slice(0, remaining);
+      if (sliced.length < parsed.length) {
+        setGuestError('Guest list truncated to fit free mode limit (500).');
+      }
+      setPendingGuests((prev) => [...prev, ...sliced]);
+      return;
+    }
     setPendingGuests((prev) => [...prev, ...parsed]);
   };
 
@@ -212,6 +248,10 @@ export default function EventDashboardPage() {
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug) return;
     if (pendingGuests.length === 0) return;
+    if (isFree && totalGuestCount > maxGuests) {
+      setUpgradeOpen(true);
+      return;
+    }
     setGuestSaving(true);
     setGuestError('');
     try {
@@ -220,6 +260,8 @@ export default function EventDashboardPage() {
       pendingGuests.forEach((guest) => {
         const guestDoc = doc(guestsRef);
         batch.set(guestDoc, {
+          firstName: guest.firstName ?? '',
+          lastName: guest.lastName ?? '',
           name: guest.name,
           phone: guest.phone,
           email: guest.email,
@@ -229,6 +271,7 @@ export default function EventDashboardPage() {
           createdAt: new Date().toISOString(),
         });
       });
+      batch.set(doc(db, 'orgs', orgSlug, 'events', eventSlug), { guestCount: increment(pendingGuests.length) }, { merge: true });
       await batch.commit();
       setPendingGuests([]);
     } catch (err) {
@@ -359,14 +402,17 @@ export default function EventDashboardPage() {
   const startEdit = (guest: Guest) => {
     if (!guest.id) return;
     setEditingId(guest.id);
-    setEditName(guest.name);
+    const fallbackName = guest.name ?? '';
+    setEditFirstName(guest.firstName ?? fallbackName.split(' ')[0] ?? '');
+    setEditLastName(guest.lastName ?? fallbackName.split(' ').slice(1).join(' ') ?? '');
     setEditPhone(guest.phone);
     setEditEmail(guest.email);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditName('');
+    setEditFirstName('');
+    setEditLastName('');
     setEditPhone('');
     setEditEmail('');
   };
@@ -376,13 +422,16 @@ export default function EventDashboardPage() {
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug || !editingId) return;
     setGuestError('');
-    if (!editName.trim() || !editEmail.trim()) {
-      setGuestError('Name and email are required.');
+    if (!editFirstName.trim() || !editLastName.trim() || !editPhone.trim()) {
+      setGuestError('First name, last name, and phone number are required.');
       return;
     }
     try {
+      const fullName = `${editFirstName.trim()} ${editLastName.trim()}`.trim();
       await updateDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug, 'guests', editingId), {
-        name: editName.trim(),
+        firstName: editFirstName.trim(),
+        lastName: editLastName.trim(),
+        name: fullName,
         phone: editPhone.trim(),
         email: editEmail.trim(),
       });
@@ -399,7 +448,10 @@ export default function EventDashboardPage() {
     if (guest.id && orgSlug && eventSlug) {
       const confirmed = window.confirm('Delete this guest?');
       if (!confirmed) return;
-      await deleteDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug, 'guests', guest.id));
+      const batch = writeBatch(db);
+      batch.delete(doc(db, 'orgs', orgSlug, 'events', eventSlug, 'guests', guest.id));
+      batch.set(doc(db, 'orgs', orgSlug, 'events', eventSlug), { guestCount: increment(-1) }, { merge: true });
+      await batch.commit();
       return;
     }
     if (typeof index === 'number') {
@@ -420,12 +472,8 @@ export default function EventDashboardPage() {
         date,
         time,
         location,
-        gatesOpen,
-        peakStart,
-        peakEnd,
-        avgScanSeconds: avgScanSeconds ? Number(avgScanSeconds) : 0,
       });
-      setEventData((prev) => ({ ...(prev ?? {}), name, date, time, location, gatesOpen, peakStart, peakEnd, avgScanSeconds: avgScanSeconds ? Number(avgScanSeconds) : 0 }));
+      setEventData((prev) => ({ ...(prev ?? {}), name, date, time, location }));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to update event';
       setError(message);
@@ -440,7 +488,10 @@ export default function EventDashboardPage() {
     if (!orgSlug || !eventSlug) return;
     const confirmed = window.confirm('Delete this event? This cannot be undone.');
     if (!confirmed) return;
-    await deleteDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug));
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'orgs', orgSlug, 'events', eventSlug));
+    batch.set(doc(db, 'orgs', orgSlug), { eventCount: increment(-1) }, { merge: true });
+    await batch.commit();
     router.replace(`/${orgSlug}`);
   };
 
@@ -473,13 +524,38 @@ export default function EventDashboardPage() {
           </p>
           <div className="grid sm:grid-cols-3 gap-3 text-xs text-slate-500">
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-              Gates open: {eventData?.gatesOpen || '0'}
+              Gates open:{' '}
+              {eventData?.gatesOpenAt
+                ? new Date(eventData.gatesOpenAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                : '0'}
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-              Peak window: {eventData?.peakStart || '0'} - {eventData?.peakEnd || '0'}
+              Peak window:{' '}
+              {(() => {
+                const checked = guests.filter((g) => g.checkedInAt);
+                if (checked.length === 0) return '0';
+                const counts: Record<number, number> = {};
+                checked.forEach((g) => {
+                  const d = new Date(g.checkedInAt as string);
+                  const hour = d.getHours();
+                  counts[hour] = (counts[hour] ?? 0) + 1;
+                });
+                const top = Object.entries(counts).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+                if (!top) return '0';
+                const hour = Number(top[0]);
+                const start = new Date();
+                start.setHours(hour, 0, 0, 0);
+                const end = new Date();
+                end.setHours(hour + 1, 0, 0, 0);
+                const fmt = (value: Date) => value.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                return `${fmt(start)} - ${fmt(end)}`;
+              })()}
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-              Avg scan: {eventData?.avgScanSeconds ? `${eventData.avgScanSeconds} sec` : '0'}
+              Avg scan:{' '}
+              {eventData?.scanCount
+                ? `${Math.round((eventData.scanTotalMs ?? 0) / eventData.scanCount)} ms`
+                : '0'}
             </div>
           </div>
           <div className="mt-4">
@@ -490,10 +566,18 @@ export default function EventDashboardPage() {
               Design invite
             </Link>
             <Link
-              className="inline-flex items-center px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm font-semibold ml-3"
+              className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-semibold ml-3 ${
+                isFree ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white'
+              }`}
               href={`/${params.org}/${params.event}/scan`}
+              onClick={(event) => {
+                if (isFree) {
+                  event.preventDefault();
+                  setUpgradeOpen(true);
+                }
+              }}
             >
-              Open scanner
+              {isFree ? 'QR scanning disabled' : 'Open scanner'}
             </Link>
           </div>
         </motion.div>
@@ -538,42 +622,11 @@ export default function EventDashboardPage() {
                   onChange={(event) => setTime(event.target.value)}
                 />
               </div>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <input
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                  placeholder="Gates open"
-                  type="time"
-                  value={gatesOpen}
-                  onChange={(event) => setGatesOpen(event.target.value)}
-                />
-                <input
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                  placeholder="Peak start"
-                  type="time"
-                  value={peakStart}
-                  onChange={(event) => setPeakStart(event.target.value)}
-                />
-                <input
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                  placeholder="Peak end"
-                  type="time"
-                  value={peakEnd}
-                  onChange={(event) => setPeakEnd(event.target.value)}
-                />
-              </div>
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
                 placeholder="Location"
                 value={location}
                 onChange={(event) => setLocation(event.target.value)}
-              />
-              <input
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Avg scan seconds"
-                type="number"
-                min="0"
-                value={avgScanSeconds}
-                onChange={(event) => setAvgScanSeconds(event.target.value)}
               />
               <div className="flex items-center gap-3">
                 <button
@@ -603,18 +656,27 @@ export default function EventDashboardPage() {
         <section className="mt-10 grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
             <h2 className="text-lg font-bold mb-4">Guest list</h2>
-            <div className="grid sm:grid-cols-3 gap-3 mb-4">
+            <div className="grid sm:grid-cols-4 gap-3 mb-4">
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Name"
-                value={guestName}
-                onChange={(event) => setGuestName(event.target.value)}
+                placeholder="First name"
+                value={guestFirstName}
+                onChange={(event) => setGuestFirstName(event.target.value)}
+                required
+              />
+              <input
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                placeholder="Last name"
+                value={guestLastName}
+                onChange={(event) => setGuestLastName(event.target.value)}
+                required
               />
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
                 placeholder="Phone number"
                 value={guestPhone}
                 onChange={(event) => setGuestPhone(event.target.value)}
+                required
               />
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
@@ -643,6 +705,11 @@ export default function EventDashboardPage() {
               >
                 {guestSaving ? 'Saving...' : `Save ${pendingGuests.length} guest${pendingGuests.length === 1 ? '' : 's'}`}
               </button>
+              {isFree ? (
+                <div className="text-xs text-slate-500">
+                  Free mode: {totalGuestCount}/{maxGuests} guests
+                </div>
+              ) : null}
               <button
                 type="button"
                 className="px-4 py-2 rounded-2xl bg-emerald-600 text-white text-sm"
@@ -656,18 +723,30 @@ export default function EventDashboardPage() {
               {combinedGuests.length === 0 ? (
                 <div className="text-sm text-slate-500">No guests added yet.</div>
               ) : (
-                combinedGuests.map((guest, index) => {
+                <>
+                  <div className="hidden sm:grid sm:grid-cols-4 gap-3 text-xs uppercase tracking-widest text-slate-500 px-2">
+                    <div>First / Last</div>
+                    <div>Phone</div>
+                    <div>Email</div>
+                    <div>Status</div>
+                  </div>
+                  {combinedGuests.map((guest, index) => {
                   const isPending = !guest.id;
                   const isEditing = editingId === guest.id;
                   return (
                     <div key={`${guest.email}-${index}`} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                       {isEditing ? (
                         <div className="space-y-3">
-                          <div className="grid sm:grid-cols-3 gap-3">
+                          <div className="grid sm:grid-cols-4 gap-3">
                             <input
                               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                              value={editName}
-                              onChange={(event) => setEditName(event.target.value)}
+                              value={editFirstName}
+                              onChange={(event) => setEditFirstName(event.target.value)}
+                            />
+                            <input
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                              value={editLastName}
+                              onChange={(event) => setEditLastName(event.target.value)}
                             />
                             <input
                               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
@@ -691,12 +770,17 @@ export default function EventDashboardPage() {
                         </div>
                       ) : (
                         <div className="grid sm:grid-cols-4 gap-3 text-sm items-center">
-                          <div>{guest.name || 'Unnamed'}</div>
+                          <div>
+                            {(guest.firstName || guest.lastName)
+                              ? `${guest.firstName ?? ''} ${guest.lastName ?? ''}`.trim()
+                              : guest.name || 'Unnamed'}
+                          </div>
                           <div className="text-slate-400">{guest.phone || 'No phone'}</div>
                           <div className="text-slate-400">{guest.email || 'No email'}</div>
                           <div className="flex items-center justify-between gap-3">
                             <div className="text-xs text-slate-500">
-                              {guest.status ?? 'invited'} {guest.checkedIn ? `· Checked-in (${guest.checkInCount ?? 0}/2)` : ''}
+                              {guest.status ?? 'invited'}{' '}
+                              {guest.checkedIn ? `· Checked-in (${guest.checkInCount ?? 0}/${maxScansLabel})` : ''}
                             </div>
                             <div className="relative">
                               <button
@@ -757,14 +841,15 @@ export default function EventDashboardPage() {
                       )}
                     </div>
                   );
-                })
+                })}
+                </>
               )}
             </div>
           </div>
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
             <h2 className="text-lg font-bold mb-4">Import tips</h2>
             <div className="space-y-3 text-sm text-slate-600">
-              <div>CSV columns supported: name, phone, email</div>
+              <div>CSV columns supported: firstName, lastName, phone, email</div>
               <div>Header row is optional.</div>
               <div>PDF import is not available yet.</div>
             </div>
@@ -837,24 +922,33 @@ export default function EventDashboardPage() {
                               No design image yet
                             </div>
                           )}
-                          <div
-                            className="absolute"
-                            style={{
-                              left: `${(eventData?.qrX ?? 0.1) * 100}%`,
-                              top: `${(eventData?.qrY ?? 0.1) * 100}%`,
-                              transform: 'translate(-50%, -50%)',
-                              width: eventData?.qrSize ?? 96,
-                              height: eventData?.qrSize ?? 96,
-                            }}
-                          >
-                            <img
-                              alt="QR code"
-                              className="w-full h-full object-cover rounded-xl border border-slate-200 bg-white"
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                                `${inviteTarget?.name ?? ''}|${params.org}/${params.event}`
-                              )}`}
-                            />
-                          </div>
+                          {!isFree ? (
+                            <div
+                              className="absolute"
+                              style={{
+                                left: `${(eventData?.qrX ?? 0.1) * 100}%`,
+                                top: `${(eventData?.qrY ?? 0.1) * 100}%`,
+                                transform: 'translate(-50%, -50%)',
+                                width: eventData?.qrSize ?? 96,
+                                height: eventData?.qrSize ?? 96,
+                              }}
+                            >
+                              <img
+                                alt="QR code"
+                                className="w-full h-full object-cover rounded-xl border border-slate-200 bg-white"
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                                  `${inviteTarget?.name ?? ''}|${params.org}/${params.event}`
+                                )}`}
+                                onError={(event) => {
+                                  (event.currentTarget as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="absolute left-4 top-4 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">
+                              QR disabled in free mode
+                            </div>
+                          )}
                           <div
                             className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow text-sm font-semibold ${
                               eventData?.nameBg === false ? 'bg-transparent border-transparent shadow-none' : 'bg-white/90'
@@ -928,24 +1022,33 @@ export default function EventDashboardPage() {
                     {eventData?.imageDataUrl ? (
                       <img src={eventData.imageDataUrl} alt="Guest card" className="absolute inset-0 w-full h-full object-cover" />
                     ) : null}
-                    <div
-                      className="absolute"
-                      style={{
-                        left: `${(eventData?.qrX ?? 0.1) * 100}%`,
-                        top: `${(eventData?.qrY ?? 0.1) * 100}%`,
-                        transform: 'translate(-50%, -50%)',
-                        width: eventData?.qrSize ?? 96,
-                        height: eventData?.qrSize ?? 96,
-                      }}
-                    >
-                      <img
-                        alt="QR code"
-                        className="w-full h-full object-cover rounded-xl border border-slate-200 bg-white"
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                          `${cardGuest.name}|${params.org}/${params.event}`
-                        )}`}
-                      />
-                    </div>
+                    {!isFree ? (
+                      <div
+                        className="absolute"
+                        style={{
+                          left: `${(eventData?.qrX ?? 0.1) * 100}%`,
+                          top: `${(eventData?.qrY ?? 0.1) * 100}%`,
+                          transform: 'translate(-50%, -50%)',
+                          width: eventData?.qrSize ?? 96,
+                          height: eventData?.qrSize ?? 96,
+                        }}
+                      >
+                        <img
+                          alt="QR code"
+                          className="w-full h-full object-cover rounded-xl border border-slate-200 bg-white"
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                            `${cardGuest.name}|${params.org}/${params.event}`
+                          )}`}
+                          onError={(event) => {
+                            (event.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="absolute left-4 top-4 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">
+                        QR disabled in free mode
+                      </div>
+                    )}
                     <div
                       className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow text-sm font-semibold ${
                         eventData?.nameBg === false ? 'bg-transparent border-transparent shadow-none' : 'bg-white/90'
@@ -969,6 +1072,49 @@ export default function EventDashboardPage() {
                   <div>{cardGuest.phone}</div>
                 </div>
               </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <AnimatePresence>
+          {upgradeOpen ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0 bg-black/60"
+                onClick={() => setUpgradeOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+              >
+                <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
+                <p className="text-sm text-slate-600 mb-4">
+                  QR scanning is disabled in free mode. Upgrade to unlock QR check-in and smart invitations.
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                    onClick={() => setUpgradeOpen(false)}
+                  >
+                    Not now
+                  </button>
+                  <Link
+                    className="px-4 py-2 rounded-2xl bg-blue-600 text-white"
+                    href={`/${params.org}/pricing`}
+                  >
+                    View pricing
+                  </Link>
+                </div>
+              </motion.div>
             </motion.div>
           ) : null}
         </AnimatePresence>

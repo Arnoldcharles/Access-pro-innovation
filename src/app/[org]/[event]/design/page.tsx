@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion, cubicBezier } from "framer-motion";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type DesignData = {
   imageDataUrl?: string;
@@ -24,17 +24,18 @@ export default function EventDesignPage() {
   const params = useParams<{ org: string; event: string }>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [eventName, setEventName] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [eventLocation, setEventLocation] = useState('');
-  const [imageDataUrl, setImageDataUrl] = useState<string>('');
+  const [saveError, setSaveError] = useState("");
+  const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [imageDataUrl, setImageDataUrl] = useState<string>("");
   const [qrPos, setQrPos] = useState({ x: 0.1, y: 0.1 });
   const [namePos, setNamePos] = useState({ x: 0.1, y: 0.3 });
-  const [nameColor, setNameColor] = useState('#111827');
+  const [nameColor, setNameColor] = useState("#111827");
   const [nameSize, setNameSize] = useState(16);
-  const [nameFont, setNameFont] = useState('Arial, sans-serif');
+  const [nameFont, setNameFont] = useState("Arial, sans-serif");
   const [nameBg, setNameBg] = useState(true);
-  const [dragging, setDragging] = useState<'qr' | 'name' | null>(null);
+  const [dragging, setDragging] = useState<"qr" | "name" | null>(null);
   const [transitioning, setTransitioning] = useState(false);
   const [imageAspect, setImageAspect] = useState(3 / 2);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -44,20 +45,31 @@ export default function EventDesignPage() {
       const orgSlug = params?.org;
       const eventSlug = params?.event;
       if (!orgSlug || !eventSlug) return;
-      const snap = await getDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug));
+      const snap = await getDoc(doc(db, "orgs", orgSlug, "events", eventSlug));
       if (snap.exists()) {
-        const data = snap.data() as DesignData & { name?: string; date?: string; location?: string };
-        setEventName(data.name ?? '');
-        setEventDate(data.date ?? '');
-        setEventLocation(data.location ?? '');
+        const data = snap.data() as DesignData & {
+          name?: string;
+          date?: string;
+          location?: string;
+        };
+        setEventName(data.name ?? "");
+        setEventDate(data.date ?? "");
+        setEventLocation(data.location ?? "");
         if (data.imageDataUrl) setImageDataUrl(data.imageDataUrl);
-        if (typeof data.qrX === 'number' && typeof data.qrY === 'number') setQrPos({ x: data.qrX, y: data.qrY });
-        if (typeof data.nameX === 'number' && typeof data.nameY === 'number') setNamePos({ x: data.nameX, y: data.nameY });
+        if (typeof data.qrX === "number" && typeof data.qrY === "number")
+          setQrPos({ x: data.qrX, y: data.qrY });
+        if (typeof data.nameX === "number" && typeof data.nameY === "number")
+          setNamePos({ x: data.nameX, y: data.nameY });
         if (data.nameColor) setNameColor(data.nameColor);
-        if (typeof data.nameSize === 'number') setNameSize(data.nameSize);
+        if (typeof data.nameSize === "number") setNameSize(data.nameSize);
         if (data.nameFont) setNameFont(data.nameFont);
-        if (typeof (data as DesignData & { nameBg?: boolean }).nameBg === 'boolean') {
-          setNameBg((data as DesignData & { nameBg?: boolean }).nameBg as boolean);
+        if (
+          typeof (data as DesignData & { nameBg?: boolean }).nameBg ===
+          "boolean"
+        ) {
+          setNameBg(
+            (data as DesignData & { nameBg?: boolean }).nameBg as boolean,
+          );
         }
       }
       setLoading(false);
@@ -65,15 +77,16 @@ export default function EventDesignPage() {
     load();
   }, [params]);
 
-  const toPercent = (value: number, max: number) => Math.min(0.95, Math.max(0.02, value / max));
+  const toPercent = (value: number, max: number) =>
+    Math.min(0.95, Math.max(0.02, value / max));
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragging || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = toPercent(event.clientX - rect.left, rect.width);
     const y = toPercent(event.clientY - rect.top, rect.height);
-    if (dragging === 'qr') setQrPos({ x, y });
-    if (dragging === 'name') setNamePos({ x, y });
+    if (dragging === "qr") setQrPos({ x, y });
+    if (dragging === "name") setNamePos({ x, y });
   };
 
   const handleSave = async () => {
@@ -81,22 +94,30 @@ export default function EventDesignPage() {
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug) return;
     setSaving(true);
-    await updateDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug), {
-      imageDataUrl,
-      qrX: qrPos.x,
-      qrY: qrPos.y,
-      nameX: namePos.x,
-      nameY: namePos.y,
-      nameColor,
-      nameSize,
-      nameFont,
-      nameBg,
-    });
-    setSaving(false);
-    setTransitioning(true);
-    setTimeout(() => {
-      router.replace(`/${orgSlug}/${eventSlug}`);
-    }, 500);
+    setSaveError("");
+    try {
+      await updateDoc(doc(db, "orgs", orgSlug, "events", eventSlug), {
+        imageDataUrl,
+        qrX: qrPos.x,
+        qrY: qrPos.y,
+        nameX: namePos.x,
+        nameY: namePos.y,
+        nameColor,
+        nameSize,
+        nameFont,
+        nameBg,
+      });
+      setTransitioning(true);
+      setTimeout(() => {
+        router.replace(`/${orgSlug}/${eventSlug}`);
+      }, 500);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to save design";
+      setSaveError(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const easeOut = cubicBezier(0.16, 1, 0.3, 1);
@@ -115,8 +136,14 @@ export default function EventDesignPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, transition: { ease: easeOut } }}>
-          <Link className="text-sm text-slate-600 hover:text-slate-900" href={`/${params.org}/${params.event}`}>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0, transition: { ease: easeOut } }}
+        >
+          <Link
+            className="text-sm text-slate-600 hover:text-slate-900"
+            href={`/${params.org}/${params.event}`}
+          >
             Back to event
           </Link>
           <h1 className="text-3xl font-black mt-4">Design invite</h1>
@@ -125,9 +152,9 @@ export default function EventDesignPage() {
           </p>
         </motion.div>
 
-        <div className="mt-8 grid lg:grid-cols-[1.2fr,0.8fr] gap-8">
+        <div className="mt-8 flex flex-col lg:flex-row gap-8 items-start">
           <div
-            className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm"
+            className="border border-slate-200 rounded-3xl p-4 bg-white shadow-sm w-full lg:flex-1"
             onPointerMove={handlePointerMove}
             onPointerUp={() => setDragging(null)}
             onPointerLeave={() => setDragging(null)}
@@ -138,7 +165,11 @@ export default function EventDesignPage() {
               style={{ aspectRatio: imageAspect }}
             >
               {imageDataUrl ? (
-                <img src={imageDataUrl} alt="Event design" className="absolute inset-0 w-full h-full object-cover" />
+                <img
+                  src={imageDataUrl}
+                  alt="Event design"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
                   Upload an image to start
@@ -146,40 +177,48 @@ export default function EventDesignPage() {
               )}
               <div
                 className="absolute bg-white border border-slate-200 rounded-xl shadow-md flex items-center justify-center cursor-grab"
-                style={{ left: `${qrPos.x * 100}%`, top: `${qrPos.y * 100}%`, transform: 'translate(-50%, -50%)' }}
-                onPointerDown={() => setDragging('qr')}
+                style={{
+                  left: `${qrPos.x * 100}%`,
+                  top: `${qrPos.y * 100}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+                onPointerDown={() => setDragging("qr")}
               >
                 <img
                   alt="QR code"
                   className="object-cover rounded-xl"
                   style={{ width: 96, height: 96 }}
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                    `Guest Name|${params.org}/${params.event}`
+                    `Guest Name|${params.org}/${params.event}`,
                   )}`}
                 />
               </div>
               <div
                 className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow cursor-grab text-sm font-semibold ${
-                  nameBg ? 'bg-white/90' : 'bg-transparent border-transparent shadow-none'
+                  nameBg
+                    ? "bg-white/90"
+                    : "bg-transparent border-transparent shadow-none"
                 }`}
                 style={{
                   left: `${namePos.x * 100}%`,
                   top: `${namePos.y * 100}%`,
-                  transform: 'translate(-50%, -50%)',
+                  transform: "translate(-50%, -50%)",
                   color: nameColor,
                   fontSize: `${nameSize}px`,
                   fontFamily: nameFont,
                 }}
-                onPointerDown={() => setDragging('name')}
+                onPointerDown={() => setDragging("name")}
               >
                 Guest Name
               </div>
             </div>
           </div>
 
-          <div className="border border-slate-200 rounded-3xl p-6 bg-white shadow-sm space-y-4">
+          <div className="border border-slate-200 rounded-3xl p-6 bg-white shadow-sm space-y-4 w-full lg:w-[360px]">
             <div>
-              <label className="text-xs uppercase tracking-widest text-slate-500">Event image</label>
+              <label className="text-xs uppercase tracking-widest text-slate-500">
+                Event image
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -190,9 +229,10 @@ export default function EventDesignPage() {
                   const img = new Image();
                   const reader = new FileReader();
                   reader.onload = () => {
-                    if (typeof reader.result === 'string') {
+                    if (typeof reader.result === "string") {
                       img.onload = () => {
-                        if (img.width && img.height) setImageAspect(img.width / img.height);
+                        if (img.width && img.height)
+                          setImageAspect(img.width / img.height);
                         setImageDataUrl(reader.result as string);
                       };
                       img.src = reader.result as string;
@@ -203,7 +243,9 @@ export default function EventDesignPage() {
               />
             </div>
             <div>
-              <label className="text-xs uppercase tracking-widest text-slate-500">Name color</label>
+              <label className="text-xs uppercase tracking-widest text-slate-500">
+                Name color
+              </label>
               <input
                 type="color"
                 className="mt-2 w-20 h-10 border border-slate-200 rounded"
@@ -213,7 +255,9 @@ export default function EventDesignPage() {
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs uppercase tracking-widest text-slate-500">Name size</label>
+                <label className="text-xs uppercase tracking-widest text-slate-500">
+                  Name size
+                </label>
                 <input
                   type="range"
                   min="12"
@@ -225,7 +269,9 @@ export default function EventDesignPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs uppercase tracking-widest text-slate-500">Font family</label>
+              <label className="text-xs uppercase tracking-widest text-slate-500">
+                Font family
+              </label>
               <select
                 className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
                 value={nameFont}
@@ -233,7 +279,9 @@ export default function EventDesignPage() {
               >
                 <option value="Arial, sans-serif">Arial</option>
                 <option value="'Georgia', serif">Georgia</option>
-                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="'Times New Roman', serif">
+                  Times New Roman
+                </option>
                 <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
                 <option value="'Courier New', monospace">Courier New</option>
               </select>
@@ -256,8 +304,11 @@ export default function EventDesignPage() {
               onClick={handleSave}
               disabled={saving}
             >
-              {saving ? 'Saving...' : 'Save design'}
+              {saving ? "Saving..." : "Save design"}
             </button>
+            {saveError ? (
+              <div className="text-sm text-red-500">{saveError}</div>
+            ) : null}
           </div>
         </div>
       </div>

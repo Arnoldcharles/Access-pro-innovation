@@ -85,6 +85,12 @@ export default function OrgDeletedPage() {
       await deleteDoc(eventDoc.ref);
     }
     await deleteDoc(orgRef);
+    const currentUserId = auth.currentUser?.uid;
+    if (currentUserId) {
+      const userSnap = await getDoc(doc(db, 'users', currentUserId));
+      const currentCount = userSnap.exists() ? ((userSnap.data().orgCount as number) ?? 0) : 0;
+      await updateDoc(doc(db, 'users', currentUserId), { orgCount: Math.max(0, currentCount - 1) });
+    }
     const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', auth.currentUser?.uid ?? ''));
     const remainingSnap = await getDocs(orgsQuery);
     const remaining = remainingSnap.docs

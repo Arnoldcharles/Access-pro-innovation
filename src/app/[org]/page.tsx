@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { motion, cubicBezier } from 'framer-motion';
+import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import {
   collection,
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
+  increment,
   onSnapshot,
   query,
   serverTimestamp,
@@ -53,19 +53,23 @@ export default function OrgDashboardPage() {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 4;
   const [eventsUnsub, setEventsUnsub] = useState<null | (() => void)>(null);
   const [orgs, setOrgs] = useState<Array<{ slug: string; name?: string }>>([]);
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
-
+  const [uid, setUid] = useState('');
+  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const maxEvents = 5;
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         router.replace('/sign-in');
         return;
       }
+      setUid(firebaseUser.uid);
       const userSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
       const userData = userSnap.exists() ? (userSnap.data() as UserData) : null;
       setUser(userData);
@@ -89,34 +93,52 @@ export default function OrgDashboardPage() {
       setLoading(false);
       setEventsLoading(true);
       if (eventsUnsub) eventsUnsub();
-      const unsubEvents = onSnapshot(collection(db, 'orgs', slug, 'events'), (snapshot) => {
-        const items = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as object) })) as Array<{
-          id: string;
-          name?: string;
-          date?: string;
-          time?: string;
-          location?: string;
-          gatesOpen?: string;
-          peakStart?: string;
-          peakEnd?: string;
-          avgScanSeconds?: number;
-        }>;
-        setEvents(items);
-        setEventsLoading(false);
-      });
+      const unsubEvents = onSnapshot(
+        collection(db, 'orgs', slug, 'events'),
+        (snapshot) => {
+          const items = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as object) })) as Array<{
+            id: string;
+            name?: string;
+            date?: string;
+            time?: string;
+            location?: string;
+            gatesOpen?: string;
+            peakStart?: string;
+            peakEnd?: string;
+            avgScanSeconds?: number;
+          }>;
+          setEvents(items);
+          setEventsLoading(false);
+        },
+        (err) => {
+          const code = (err as { code?: string }).code;
+          if (code === 'permission-denied') return;
+          console.error(err);
+        }
+      );
       setEventsUnsub(() => unsubEvents);
 
       const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', firebaseUser.uid));
-      const unsubOrgs = onSnapshot(orgsQuery, (snapshot) => {
-        const items = snapshot.docs
-          .map((docSnap) => ({
-            slug: docSnap.id,
-            ...(docSnap.data() as object),
-          }))
-          .filter((item) => !(item as { deletedAt?: unknown }).deletedAt) as Array<{ slug: string; name?: string }>;
-        setOrgs(items);
-      });
-      return () => unsubOrgs();
+      const unsubOrgs = onSnapshot(
+        orgsQuery,
+        (snapshot) => {
+          const items = snapshot.docs
+            .map((docSnap) => ({
+              slug: docSnap.id,
+              ...(docSnap.data() as object),
+            }))
+            .filter((item) => !(item as { deletedAt?: unknown }).deletedAt) as Array<{ slug: string; name?: string }>;
+          setOrgs(items);
+        },
+        (err) => {
+          const code = (err as { code?: string }).code;
+          if (code === 'permission-denied') return;
+          console.error(err);
+        }
+      );
+      return () => {
+        unsubOrgs();
+      };
     });
     return () => {
       unsub();
@@ -161,6 +183,7 @@ export default function OrgDashboardPage() {
     if (!orgSlug) return;
     const confirmed = window.confirm('Delete this event? This cannot be undone.');
     if (!confirmed) return;
+    await updateDoc(doc(db, 'orgs', orgSlug), { eventCount: increment(-1) });
     await deleteDoc(doc(db, 'orgs', orgSlug, 'events', eventId));
     setEvents((prev) => prev.filter((item) => item.id !== eventId));
   };
@@ -236,7 +259,16 @@ export default function OrgDashboardPage() {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">A</div>
             <div>
-              <div className="font-bold text-xl tracking-tight">{org?.name ?? 'Organization'}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-bold text-xl tracking-tight">{org?.name ?? 'Organization'}</div>
+                <span
+                  className={`text-[10px] uppercase tracking-widest font-black px-2 py-1 rounded-full border ${
+                    isFree ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}
+                >
+                  {isFree ? 'Free' : 'Pro'}
+                </span>
+              </div>
               <div className="text-xs text-slate-500">Dashboard</div>
             </div>
           </div>
@@ -266,9 +298,21 @@ export default function OrgDashboardPage() {
                       {item.name ?? item.slug}
                     </Link>
                   ))}
-                  <Link className="block px-4 py-2 hover:bg-slate-50" href="/onboarding?newOrg=1">
-                    + Add new org
-                  </Link>
+                  <button
+                    type="button"
+                    className={`w-full text-left px-4 py-2 ${
+                      isFree && orgs.length >= 2 ? 'text-slate-400 cursor-not-allowed' : 'hover:bg-slate-50'
+                    }`}
+                    onClick={() => {
+                      if (isFree && orgs.length >= 2) {
+                        setUpgradeOpen(true);
+                      } else {
+                        router.replace('/onboarding?newOrg=1');
+                      }
+                    }}
+                  >
+                    {isFree && orgs.length >= 2 ? 'Org limit reached' : '+ Add new org'}
+                  </button>
                   <button
                     type="button"
                     className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-600"
@@ -291,10 +335,20 @@ export default function OrgDashboardPage() {
           <p className="text-slate-600">Here is your live event overview for {org?.name ?? 'your organization'}.</p>
           </div>
           <Link
-            className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm"
+            className={`px-5 py-3 rounded-2xl font-bold text-sm ${
+              isFree && events.length >= maxEvents
+                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-500 text-white'
+            }`}
             href={`/${params.org}/create-new-event`}
+            onClick={(event) => {
+              if (isFree && events.length >= maxEvents) {
+                event.preventDefault();
+                setUpgradeOpen(true);
+              }
+            }}
           >
-            Create event
+            {isFree && events.length >= maxEvents ? 'Event limit reached' : 'Create event'}
           </Link>
         </motion.section>
 
@@ -315,8 +369,19 @@ export default function OrgDashboardPage() {
         <section className="mt-10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold">Your events</h2>
-            <Link className="text-sm text-blue-400 hover:text-blue-300" href={`/${params.org}/create-new-event`}>
-              Create another event
+            <Link
+              className={`text-sm ${
+                isFree && events.length >= maxEvents ? 'text-slate-400 cursor-not-allowed' : 'text-blue-400 hover:text-blue-300'
+              }`}
+              href={`/${params.org}/create-new-event`}
+              onClick={(event) => {
+                if (isFree && events.length >= maxEvents) {
+                  event.preventDefault();
+                  setUpgradeOpen(true);
+                }
+              }}
+            >
+              {isFree && events.length >= maxEvents ? 'Event limit reached' : 'Create another event'}
             </Link>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
@@ -448,6 +513,7 @@ export default function OrgDashboardPage() {
             </div>
           </div>
         </section>
+
       </div>
 
       {showDeleteConfirm ? (
@@ -498,6 +564,46 @@ export default function OrgDashboardPage() {
           </div>
         </div>
       ) : null}
+      <AnimatePresence>
+        {upgradeOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setUpgradeOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Free mode limits reached. Upgrade to unlock more organizations and events.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                  onClick={() => setUpgradeOpen(false)}
+                >
+                  Not now
+                </button>
+                <Link className="px-4 py-2 rounded-2xl bg-blue-600 text-white" href={`/${params.org}/pricing`}>
+                  View pricing
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

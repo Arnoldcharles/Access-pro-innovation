@@ -1,11 +1,14 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
+import { CheckCircle2, ArrowLeft, ArrowRight } from "lucide-react";
 
-export default function PricingPage() {
+export default function OrgPricingPage() {
+  const params = useParams<{ org: string }>();
+  const orgSlug = params?.org ?? "";
   const easeOut = [0.16, 1, 0.3, 1] as const;
   const fadeUp = {
     hidden: { opacity: 0, y: 18 },
@@ -16,17 +19,21 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
-        <motion.nav initial="hidden" animate="show" variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-16">
-          <Link className="flex items-center gap-3" href="/">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">A</div>
+        <motion.nav
+          initial="hidden"
+          animate="show"
+          variants={fadeUp}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-16"
+        >
+          <Link className="flex items-center gap-3" href={`/${orgSlug}`}>
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
+              A
+            </div>
             <span className="font-bold text-xl tracking-tight">AccessPro</span>
           </Link>
-          <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600">
-            <Link className="hover:text-white transition-colors" href="/features">Features</Link>
-            <Link className="hover:text-white transition-colors" href="/workflow">Workflow</Link>
-            <Link className="hover:text-white transition-colors" href="/security">Security</Link>
-            <Link className="hover:text-white transition-colors" href="/contact">Contact</Link>
-          </div>
+          <Link className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900" href={`/${orgSlug}`}>
+            <ArrowLeft size={14} /> Back to dashboard
+          </Link>
         </motion.nav>
 
         <motion.header initial="hidden" animate="show" variants={stagger} className="text-center mb-16">
@@ -42,30 +49,27 @@ export default function PricingPage() {
         <motion.section initial="hidden" animate="show" variants={stagger} className="grid lg:grid-cols-3 gap-8">
           {[
             {
-              title: 'Starter',
-              price: '$0',
-              desc: 'Perfect for small events and pilots.',
-              features: ['Up to 300 guests', 'Single venue check-in', 'Basic analytics', 'Email support'],
+              title: "Starter",
+              desc: "Perfect for small events and pilots.",
+              features: ["Up to 300 guests", "Single venue check-in", "Basic analytics", "Email support"],
             },
             {
-              title: 'Growth',
-              price: '$249',
-              desc: 'For teams running recurring events.',
-              features: ['Up to 5,000 guests', 'Multi-lane scanning', 'Automations & reminders', 'CSV exports'],
+              title: "Growth",
+              desc: "For teams running recurring events.",
+              features: ["Up to 5,000 guests", "Multi-lane scanning", "Automations & reminders", "CSV exports"],
               highlight: true,
             },
             {
-              title: 'Enterprise',
-              price: 'Custom',
-              desc: 'High-volume events and enterprise controls.',
-              features: ['Unlimited guests', 'Dedicated success team', 'SSO & advanced security', 'SLA + 24/7 support'],
+              title: "Enterprise",
+              desc: "High-volume events and enterprise controls.",
+              features: ["Unlimited guests", "Dedicated success team", "SSO & advanced security", "SLA + 24/7 support"],
             },
           ].map((tier) => (
             <motion.div
               key={tier.title}
               variants={fadeUp}
               className={`p-8 rounded-[2rem] border ${
-                tier.highlight ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'
+                tier.highlight ? "bg-blue-50 border-blue-200" : "bg-white border-slate-200"
               } shadow-sm`}
             >
               <div className="flex items-center justify-between mb-6">
@@ -87,11 +91,9 @@ export default function PricingPage() {
               </div>
               <Link
                 className={`w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-semibold ${
-                  tier.highlight
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                    : 'bg-slate-900 hover:bg-slate-800 text-white'
+                  tier.highlight ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-slate-900 hover:bg-slate-800 text-white"
                 }`}
-                href="/contact"
+                href={`/${orgSlug}/contact`}
               >
                 Talk to sales <ArrowRight size={14} />
               </Link>

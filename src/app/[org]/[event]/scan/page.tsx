@@ -2,9 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { motion, cubicBezier } from 'framer-motion';
-import { collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { useParams, useRouter } from 'next/navigation';
+import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
+import { collection, doc, getDocs, increment, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 type ScanResult = {
@@ -13,6 +13,7 @@ type ScanResult = {
 };
 
 export default function ScanPage() {
+  const router = useRouter();
   const params = useParams<{ org: string; event: string }>();
   const [result, setResult] = useState<ScanResult>({ status: 'idle', message: '' });
   const [manualCode, setManualCode] = useState('');
@@ -20,23 +21,41 @@ export default function ScanPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const [toast, setToast] = useState<string>('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [scanStart, setScanStart] = useState<number | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [uid, setUid] = useState('');
+
+  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const maxScans = isFree ? 5 : Number.MAX_SAFE_INTEGER;
+  const maxScansLabel = isFree ? String(maxScans) : '∞';
 
   const easeOut = cubicBezier(0.16, 1, 0.3, 1);
 
   useEffect(() => {
+    const checkRole = async () => {
+      const orgSlug = params?.org;
+      if (!orgSlug) return;
+      const authUser = (await import('firebase/auth')).getAuth().currentUser;
+      if (!authUser) {
+        router.replace('/sign-in');
+        return;
+      }
+      setUid(authUser.uid);
+    };
+    checkRole();
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [params, router]);
 
   const parseCode = (code: string) => {
     const [namePart] = code.split('|');
     return namePart?.trim();
   };
 
-  const markCheckedIn = async (guestName: string) => {
+  const markCheckedIn = async (guestName: string, durationMs?: number) => {
     if (!guestName) return false;
     const guestsQuery = query(
       collection(db, 'orgs', params.org, 'events', params.event, 'guests'),
@@ -46,7 +65,7 @@ export default function ScanPage() {
     for (const guestDoc of guestsSnap.docs) {
       const data = guestDoc.data() as { checkInCount?: number; checkedIn?: boolean };
       const currentCount = data.checkInCount ?? 0;
-      if (currentCount >= 2) {
+      if (currentCount >= maxScans) {
         setResult({ status: 'error', message: 'Already inside (max scans reached).' });
         return false;
       }
@@ -56,9 +75,18 @@ export default function ScanPage() {
         checkedInAt: new Date().toISOString(),
         checkInCount: nextCount,
       });
+      if (typeof durationMs === 'number') {
+        await updateDoc(doc(db, 'orgs', params.org, 'events', params.event), {
+          scanTotalMs: increment(durationMs),
+          scanCount: increment(1),
+        });
+      }
       setResult({
         status: 'success',
-        message: nextCount === 1 ? `Checked in ${guestName}` : `Re-entry granted for ${guestName} (2/2)`,
+        message:
+          nextCount === 1
+            ? `Checked in ${guestName}`
+            : `Re-entry granted for ${guestName} (${Math.min(nextCount, maxScans)}/${maxScansLabel})`,
       });
       return true;
     }
@@ -66,6 +94,10 @@ export default function ScanPage() {
   };
 
   const handleManualCheckIn = async () => {
+    if (isFree) {
+      setUpgradeOpen(true);
+      return;
+    }
     const guestName = parseCode(manualCode);
     if (!guestName) {
       setResult({ status: 'error', message: 'Invalid code.' });
@@ -85,6 +117,10 @@ export default function ScanPage() {
   };
 
   const startScan = async () => {
+    if (isFree) {
+      setUpgradeOpen(true);
+      return;
+    }
     if (!('BarcodeDetector' in window)) {
       setResult({ status: 'error', message: 'Barcode detector not supported on this browser.' });
       return;
@@ -107,6 +143,7 @@ export default function ScanPage() {
         await videoRef.current.play();
       }
       setResult({ status: 'scanning', message: 'Scanning...' });
+      setScanStart(performance.now());
       const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
 
       const scanLoop = async () => {
@@ -116,7 +153,8 @@ export default function ScanPage() {
         if (barcodes.length > 0) {
           const code = barcodes[0].rawValue as string;
           const guestName = parseCode(code);
-          const ok = await markCheckedIn(guestName);
+          const durationMs = scanStart ? Math.max(0, Math.round(performance.now() - scanStart)) : undefined;
+          const ok = await markCheckedIn(guestName, durationMs);
           if (!ok) {
             setResult({ status: 'error', message: 'Guest not found.' });
             setToastType('error');
@@ -165,10 +203,12 @@ export default function ScanPage() {
             </div>
             <button
               type="button"
-              className="mt-4 px-5 py-3 rounded-2xl bg-blue-600 text-white font-semibold"
+              className={`mt-4 px-5 py-3 rounded-2xl font-semibold ${
+                isFree ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-blue-600 text-white'
+              }`}
               onClick={startScan}
             >
-              Start scanning
+              {isFree ? 'QR scanning disabled' : 'Start scanning'}
             </button>
           </div>
           <div className="border border-slate-200 rounded-3xl p-6 bg-white shadow-sm space-y-4">
@@ -178,14 +218,18 @@ export default function ScanPage() {
               placeholder="Paste QR code value"
               value={manualCode}
               onChange={(event) => setManualCode(event.target.value)}
+              disabled={isFree}
             />
             <button
               type="button"
-              className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm"
+              className={`px-4 py-2 rounded-2xl text-sm ${
+                isFree ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white'
+              }`}
               onClick={handleManualCheckIn}
             >
-              Check in guest
+              {isFree ? 'Manual check-in disabled' : 'Check in guest'}
             </button>
+            {isFree ? <div className="text-xs text-slate-500">QR check-in is disabled in free mode.</div> : null}
             {result.message ? (
               <div
                 className={`text-sm ${
@@ -207,6 +251,46 @@ export default function ScanPage() {
           </div>
         ) : null}
       </div>
+      <AnimatePresence>
+        {upgradeOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setUpgradeOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                QR scanning is disabled in free mode. Upgrade to unlock QR check-in and smart invitations.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                  onClick={() => setUpgradeOpen(false)}
+                >
+                  Not now
+                </button>
+                <Link className="px-4 py-2 rounded-2xl bg-blue-600 text-white" href={`/${params.org}/pricing`}>
+                  View pricing
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

@@ -7,7 +7,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 const slugify = (value: string) =>
@@ -31,6 +42,11 @@ export default function OnboardingPage() {
   const [uid, setUid] = useState('');
   const [email, setEmail] = useState('');
   const [showOrgTaken, setShowOrgTaken] = useState(false);
+  const [orgCount, setOrgCount] = useState(0);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const maxOrgs = 2;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -62,6 +78,10 @@ export default function OnboardingPage() {
           }
         }
       }
+      const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', user.uid));
+      const orgsSnap = await getDocs(orgsQuery);
+      const activeCount = orgsSnap.docs.filter((docSnap) => !(docSnap.data() as { deletedAt?: unknown }).deletedAt).length;
+      setOrgCount(activeCount);
 
       setLoading(false);
     });
@@ -83,6 +103,11 @@ export default function OnboardingPage() {
 
     setSaving(true);
     try {
+      if (isFree && orgCount >= maxOrgs) {
+        setUpgradeOpen(true);
+        setSaving(false);
+        return;
+      }
       let slug = baseSlug;
       const orgSnap = await getDoc(doc(db, 'orgs', slug));
       if (orgSnap.exists()) {
@@ -92,15 +117,23 @@ export default function OnboardingPage() {
       }
 
       const now = serverTimestamp();
-      await setDoc(doc(db, 'orgs', slug), {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'orgs', slug), {
         name: orgName,
         slug,
         ownerId: uid,
         createdAt: now,
         updatedAt: now,
+        eventCount: 0,
       });
-
-      await setDoc(
+      batch.set(doc(db, 'orgs', slug, 'members', uid), {
+        role: 'owner',
+        email,
+        name,
+        createdAt: now,
+        updatedAt: now,
+      });
+      batch.set(
         doc(db, 'users', uid),
         {
           uid,
@@ -113,9 +146,11 @@ export default function OnboardingPage() {
           role,
           updatedAt: now,
           createdAt: now,
+          orgCount: increment(1),
         },
         { merge: true }
       );
+      await batch.commit();
 
       router.replace(`/${slug}`);
     } catch (err) {
@@ -245,6 +280,46 @@ export default function OnboardingPage() {
               >
                 Okay
               </button>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {upgradeOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setUpgradeOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Free mode allows up to {maxOrgs} organizations. Upgrade to create more.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                  onClick={() => setUpgradeOpen(false)}
+                >
+                  Not now
+                </button>
+                <Link className="px-4 py-2 rounded-2xl bg-blue-600 text-white" href="/pricing">
+                  View pricing
+                </Link>
+              </div>
             </motion.div>
           </motion.div>
         ) : null}
