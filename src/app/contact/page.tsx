@@ -29,7 +29,7 @@ export default function ContactPage() {
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
               A
             </div>
-            <span className="font-bold text-xl tracking-tight">AccessPro</span>
+            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
           </Link>
           <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600">
             <Link
@@ -69,11 +69,11 @@ export default function ContactPage() {
             Contact
           </div>
           <h1 className="text-4xl md:text-6xl font-black leading-tight">
-            Let’s plan your next event together.
+            Letâ€™s plan your next event together.
           </h1>
           <p className="text-slate-600 mt-4 max-w-2xl text-lg leading-relaxed">
-            Tell us about your event size, timeline, and goals. We’ll map out
-            the best AccessPro workflow for your team.
+            Tell us about your event size, timeline, and goals. Weâ€™ll map out
+            the best AccessPro Innovation workflow for your team.
           </p>
         </motion.header>
 
@@ -118,7 +118,7 @@ export default function ContactPage() {
             {[
               {
                 label: "Email",
-                value: "accessproinnovation@gmail.com",
+                value: "AccessPro Innovationinnovation@gmail.com",
                 icon: <Mail size={18} />,
               },
               {

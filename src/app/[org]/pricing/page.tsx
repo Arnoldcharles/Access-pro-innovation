@@ -29,7 +29,7 @@ export default function OrgPricingPage() {
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
               A
             </div>
-            <span className="font-bold text-xl tracking-tight">AccessPro</span>
+            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
           </Link>
           <Link className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900" href={`/${orgSlug}`}>
             <ArrowLeft size={14} /> Back to dashboard

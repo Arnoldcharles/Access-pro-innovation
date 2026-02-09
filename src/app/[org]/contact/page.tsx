@@ -32,7 +32,7 @@ export default function OrgContactPage() {
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
               A
             </div>
-            <span className="font-bold text-xl tracking-tight">AccessPro</span>
+            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
           </Link>
           <Link className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900" href={`/${orgSlug}`}>
             <ArrowLeft size={14} /> Back to dashboard
@@ -43,9 +43,9 @@ export default function OrgContactPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-xs font-semibold text-blue-700 mb-4">
             Contact
           </div>
-          <h1 className="text-4xl md:text-6xl font-black leading-tight">Let’s plan your next event together.</h1>
+          <h1 className="text-4xl md:text-6xl font-black leading-tight">Letâ€™s plan your next event together.</h1>
           <p className="text-slate-600 mt-4 max-w-2xl text-lg leading-relaxed">
-            Tell us about your event size, timeline, and goals. We’ll map out the best AccessPro workflow for your team.
+            Tell us about your event size, timeline, and goals. Weâ€™ll map out the best AccessPro Innovation workflow for your team.
           </p>
         </motion.header>
 
@@ -65,7 +65,7 @@ export default function OrgContactPage() {
 
           <motion.div variants={fadeUp} className="space-y-4">
             {[
-              { label: "Email", value: "accessproinnovation@gmail.com", icon: <Mail size={18} /> },
+              { label: "Email", value: "AccessPro Innovationinnovation@gmail.com", icon: <Mail size={18} /> },
               { label: "Phone", value: "+234 81 3368 9639", icon: <PhoneCall size={18} /> },
               { label: "HQ", value: "12, Ogunbekun Street, Ladilak, Lagos, Nigeria", icon: <MapPin size={18} /> },
             ].map((item) => (

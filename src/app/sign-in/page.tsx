@@ -21,6 +21,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [blockedOpen, setBlockedOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -38,6 +39,12 @@ export default function SignInPage() {
         return;
       }
       const snap = await getDoc(doc(db, "users", user.uid));
+      const blocked = snap.exists() ? Boolean((snap.data() as { blocked?: boolean }).blocked) : false;
+      if (blocked) {
+        setBlockedOpen(true);
+        await auth.signOut();
+        return;
+      }
       const orgSlug = snap.exists()
         ? (snap.data().orgSlug as string | undefined)
         : undefined;
@@ -74,6 +81,12 @@ export default function SignInPage() {
       const user = result.user;
       if (user) {
         const snap = await getDoc(doc(db, "users", user.uid));
+        const blocked = snap.exists() ? Boolean((snap.data() as { blocked?: boolean }).blocked) : false;
+        if (blocked) {
+          setBlockedOpen(true);
+          await auth.signOut();
+          return;
+        }
         const orgSlug = snap.exists()
           ? (snap.data().orgSlug as string | undefined)
           : undefined;
@@ -110,7 +123,7 @@ export default function SignInPage() {
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
               A
             </div>
-            <span className="font-bold text-xl tracking-tight">AccessPro</span>
+            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
           </Link>
 
           <div className="mb-3">
@@ -253,11 +266,44 @@ export default function SignInPage() {
             </motion.button>
           </form>
 
-          {error ? (
-            <div className="mt-4 text-sm text-red-400">{error}</div>
-          ) : null}
+          {error ? <div className="mt-4 text-sm text-red-400">{error}</div> : null}
         </motion.div>
       </div>
+      <AnimatePresence>
+        {blockedOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setBlockedOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Account blocked</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Your account has been blocked by an administrator. Please contact support.
+              </p>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                onClick={() => setBlockedOpen(false)}
+              >
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

@@ -95,8 +95,10 @@ export default function EventDashboardPage() {
   const [cardGuest, setCardGuest] = useState<Guest | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [uid, setUid] = useState('');
-  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const [orgPlan, setOrgPlan] = useState<'free' | 'pro'>('free');
+  const isFree = orgPlan !== 'pro';
   const maxGuests = 500;
+  const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
   const maxScans = isFree ? 5 : Number.MAX_SAFE_INTEGER;
   const maxScansLabel = isFree ? String(maxScans) : '∞';
 
@@ -107,6 +109,13 @@ export default function EventDashboardPage() {
         return;
       }
       setUid(user.uid);
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      const userBlocked = userSnap.exists() ? Boolean((userSnap.data() as { blocked?: boolean }).blocked) : false;
+      if (userBlocked) {
+        await auth.signOut();
+        router.replace('/sign-in');
+        return;
+      }
       const orgSlug = params?.org;
       const eventSlug = params?.event;
       if (!orgSlug || !eventSlug) return;
@@ -116,7 +125,16 @@ export default function EventDashboardPage() {
         router.replace('/onboarding');
         return;
       }
-      setOrgName((orgSnap.data().name as string) ?? '');
+      const orgData = orgSnap.data() as { name?: string; plan?: 'free' | 'pro'; blocked?: boolean };
+      if (orgData.blocked) {
+        setBlockedOrgOpen(true);
+        setTimeout(() => {
+          router.replace('/onboarding');
+        }, 1200);
+        return;
+      }
+      setOrgName(orgData.name ?? '');
+      setOrgPlan(orgData.plan === 'pro' ? 'pro' : 'free');
       const eventSnap = await getDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug));
       if (!eventSnap.exists()) {
         router.replace(`/${orgSlug}`);
@@ -1114,6 +1132,41 @@ export default function EventDashboardPage() {
                     View pricing
                   </Link>
                 </div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <AnimatePresence>
+          {blockedOrgOpen ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0 bg-black/60"
+                onClick={() => setBlockedOrgOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+              >
+                <h3 className="text-lg font-bold mb-2">Organization blocked</h3>
+                <p className="text-sm text-slate-600 mb-4">
+                  This organization has been blocked by an administrator. You will be redirected.
+                </p>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                  onClick={() => setBlockedOrgOpen(false)}
+                >
+                  Close
+                </button>
               </motion.div>
             </motion.div>
           ) : null}

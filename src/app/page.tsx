@@ -49,7 +49,7 @@ const FixedLandingPage = () => {
               A
             </div>
             <span className="font-bold text-xl tracking-tight">
-              AccessPro{" "}
+              AccessPro Innovation{" "}
               <span className="text-blue-600 text-[10px] ml-1 uppercase">
                 Beta
               </span>
@@ -240,7 +240,7 @@ const FixedLandingPage = () => {
               </h3>
               <p className="text-slate-600 text-lg leading-relaxed">
                 Every event follows a repeatable path: plan, invite, check-in,
-                and analyze. AccessPro keeps each stage connected so your team
+                and analyze. AccessPro Innovation keeps each stage connected so your team
                 never scrambles for the latest list, last-minute badge, or
                 attendance report.
               </p>
@@ -512,7 +512,7 @@ const FixedLandingPage = () => {
               },
               {
                 q: "Can we integrate with our CRM?",
-                a: "AccessPro supports CSV exports, Zapier workflows, and a secure API for custom pipelines.",
+                a: "AccessPro Innovation supports CSV exports, Zapier workflows, and a secure API for custom pipelines.",
               },
             ].map((item) => (
               <motion.div
@@ -543,7 +543,7 @@ const FixedLandingPage = () => {
                 Ready to transform your events?
               </h2>
               <p className="text-blue-100/80 max-w-xl mx-auto text-lg mb-10 leading-relaxed">
-                Join 2,000+ organizers already using AccessPro for seamless
+                Join 2,000+ organizers already using AccessPro Innovation for seamless
                 guest management.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">

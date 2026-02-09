@@ -45,7 +45,8 @@ export default function OnboardingPage() {
   const [orgCount, setOrgCount] = useState(0);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
-  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const siteOwnerUid = 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const isFree = uid !== siteOwnerUid;
   const maxOrgs = 2;
 
   useEffect(() => {
@@ -125,6 +126,7 @@ export default function OnboardingPage() {
         createdAt: now,
         updatedAt: now,
         eventCount: 0,
+        plan: 'free',
       });
       batch.set(doc(db, 'orgs', slug, 'members', uid), {
         role: 'owner',
@@ -184,7 +186,7 @@ export default function OnboardingPage() {
         <motion.div initial="hidden" animate="show" variants={fadeUp}>
           <Link className="flex items-center gap-3 mb-10" href="/">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">A</div>
-            <span className="font-bold text-xl tracking-tight">AccessPro</span>
+            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
           </Link>
 
           <h1 className="text-3xl md:text-4xl font-black mb-3">Set up your organization</h1>

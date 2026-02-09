@@ -38,10 +38,11 @@ export default function CreateEventPage() {
   const [location, setLocation] = useState('');
   const [orgName, setOrgName] = useState('');
   const [uid, setUid] = useState('');
+  const [orgPlan, setOrgPlan] = useState<'free' | 'pro'>('free');
   const [eventCount, setEventCount] = useState(0);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
-  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const isFree = orgPlan !== 'pro';
   const maxEvents = 5;
 
   useEffect(() => {
@@ -58,7 +59,9 @@ export default function CreateEventPage() {
         router.replace('/onboarding');
         return;
       }
-      setOrgName((orgSnap.data().name as string) ?? '');
+      const orgData = orgSnap.data() as { name?: string; plan?: 'free' | 'pro' };
+      setOrgName(orgData.name ?? '');
+      setOrgPlan(orgData.plan === 'pro' ? 'pro' : 'free');
       const eventsSnap = await getDocs(query(collection(db, 'orgs', orgSlug, 'events')));
       setEventCount(eventsSnap.docs.length);
       setLoading(false);

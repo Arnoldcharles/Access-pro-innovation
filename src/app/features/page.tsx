@@ -19,7 +19,7 @@ export default function FeaturesPage() {
         <motion.nav initial="hidden" animate="show" variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-16">
           <Link className="flex items-center gap-3" href="/">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">A</div>
-            <span className="font-bold text-xl tracking-tight">AccessPro</span>
+            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
           </Link>
           <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600">
             <Link className="hover:text-white transition-colors" href="/workflow">Workflow</Link>
@@ -35,7 +35,7 @@ export default function FeaturesPage() {
           </div>
           <h1 className="text-4xl md:text-6xl font-black leading-tight">Everything your team needs to run seamless events.</h1>
           <p className="text-slate-600 mt-4 max-w-2xl text-lg leading-relaxed">
-            From RSVPs to scanning and post-event analytics, AccessPro combines the tools organizers use most into a single workflow.
+            From RSVPs to scanning and post-event analytics, AccessPro Innovation combines the tools organizers use most into a single workflow.
           </p>
         </motion.header>
 
@@ -69,7 +69,7 @@ export default function FeaturesPage() {
             <div>
               <h2 className="text-3xl font-black mb-4">Designed for high-stakes event operations.</h2>
               <p className="text-slate-600 leading-relaxed mb-8">
-                AccessPro keeps your entire event timeline connected, so your team can focus on the guest experience instead of spreadsheets.
+                AccessPro Innovation keeps your entire event timeline connected, so your team can focus on the guest experience instead of spreadsheets.
               </p>
               <Link className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700" href="/workflow">
                 See the process flow <ArrowRight size={14} />

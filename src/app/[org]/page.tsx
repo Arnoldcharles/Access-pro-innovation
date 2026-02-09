@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion, cubicBezier } from "framer-motion";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection,
   deleteDoc,
@@ -16,12 +16,15 @@ import {
   serverTimestamp,
   updateDoc,
   where,
-} from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 type OrgData = {
   name?: string;
   slug?: string;
+  plan?: 'free' | 'pro';
+  ownerId?: string;
+  blocked?: boolean;
 };
 
 type UserData = {
@@ -49,54 +52,80 @@ export default function OrgDashboardPage() {
       avgScanSeconds?: number;
     }>
   >([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "upcoming" | "past">("all");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const pageSize = 4;
   const [eventsUnsub, setEventsUnsub] = useState<null | (() => void)>(null);
   const [orgs, setOrgs] = useState<Array<{ slug: string; name?: string }>>([]);
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteInput, setDeleteInput] = useState('');
-  const [uid, setUid] = useState('');
-  const isFree = uid !== 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const [deleteInput, setDeleteInput] = useState("");
+  const [uid, setUid] = useState("");
+  const siteOwnerUid = "krpJL2xq7Rf1NUumK3G6nzpZWsM2";
+  const [orgPlan, setOrgPlan] = useState<"free" | "pro">("free");
+  const isFree = orgPlan !== "pro";
   const maxEvents = 5;
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
-        router.replace('/sign-in');
+        router.replace("/sign-in");
         return;
       }
       setUid(firebaseUser.uid);
-      const userSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+      const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
       const userData = userSnap.exists() ? (userSnap.data() as UserData) : null;
+      const userBlocked = userSnap.exists() ? Boolean((userSnap.data() as { blocked?: boolean }).blocked) : false;
+      if (userBlocked) {
+        setUpgradeOpen(false);
+        await signOut(auth);
+        router.replace("/sign-in");
+        return;
+      }
       setUser(userData);
 
       const slug = params?.org;
       if (!slug) return;
 
-      const orgSnap = await getDoc(doc(db, 'orgs', slug));
+      const orgSnap = await getDoc(doc(db, "orgs", slug));
       if (!orgSnap.exists()) {
-        router.replace('/onboarding');
+        router.replace("/onboarding");
         return;
       }
-      const orgData = orgSnap.data() as { deletedAt?: unknown };
-      if (orgData?.deletedAt) {
+      const orgMeta = orgSnap.data() as { deletedAt?: unknown; blocked?: boolean };
+      if (orgMeta?.deletedAt) {
         router.replace(`/org-deleted?org=${slug}`);
         return;
       }
+      if (orgMeta?.blocked) {
+        setBlockedOrgOpen(true);
+        setTimeout(() => {
+          if (orgs.length > 0) {
+            router.replace(`/${orgs[0].slug}`);
+          } else {
+            router.replace("/onboarding");
+          }
+        }, 1200);
+        return;
+      }
 
-      setOrg(orgSnap.data() as OrgData);
+      const orgData = orgSnap.data() as OrgData;
+      setOrg(orgData);
+      setOrgPlan(orgData.plan === "pro" ? "pro" : "free");
 
       setLoading(false);
       setEventsLoading(true);
       if (eventsUnsub) eventsUnsub();
       const unsubEvents = onSnapshot(
-        collection(db, 'orgs', slug, 'events'),
+        collection(db, "orgs", slug, "events"),
         (snapshot) => {
-          const items = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as object) })) as Array<{
+          const items = snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...(docSnap.data() as object),
+          })) as Array<{
             id: string;
             name?: string;
             date?: string;
@@ -112,13 +141,16 @@ export default function OrgDashboardPage() {
         },
         (err) => {
           const code = (err as { code?: string }).code;
-          if (code === 'permission-denied') return;
+          if (code === "permission-denied") return;
           console.error(err);
-        }
+        },
       );
       setEventsUnsub(() => unsubEvents);
 
-      const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', firebaseUser.uid));
+      const orgsQuery = query(
+        collection(db, "orgs"),
+        where("ownerId", "==", firebaseUser.uid),
+      );
       const unsubOrgs = onSnapshot(
         orgsQuery,
         (snapshot) => {
@@ -127,14 +159,16 @@ export default function OrgDashboardPage() {
               slug: docSnap.id,
               ...(docSnap.data() as object),
             }))
-            .filter((item) => !(item as { deletedAt?: unknown }).deletedAt) as Array<{ slug: string; name?: string }>;
+            .filter(
+              (item) => !(item as { deletedAt?: unknown }).deletedAt,
+            ) as Array<{ slug: string; name?: string }>;
           setOrgs(items);
         },
         (err) => {
           const code = (err as { code?: string }).code;
-          if (code === 'permission-denied') return;
+          if (code === "permission-denied") return;
           console.error(err);
-        }
+        },
       );
       return () => {
         unsubOrgs();
@@ -148,7 +182,7 @@ export default function OrgDashboardPage() {
 
   const handleSignOut = async () => {
     await signOut(auth);
-    router.replace('/sign-in');
+    router.replace("/sign-in");
   };
 
   const handleDeleteOrg = async () => {
@@ -166,25 +200,30 @@ export default function OrgDashboardPage() {
     const normalizedInput = deleteInput.trim().toLowerCase();
     const normalizedName = currentName.trim().toLowerCase();
     if (normalizedInput !== normalizedName) return;
-    await updateDoc(doc(db, 'orgs', orgSlug), { deletedAt: serverTimestamp() });
+    await updateDoc(doc(db, "orgs", orgSlug), { deletedAt: serverTimestamp() });
     const remainingOrgs = orgs.filter((item) => item.slug !== orgSlug);
     if (remainingOrgs.length === 0) {
-      await updateDoc(doc(db, 'users', currentUser.uid), { orgSlug: null, orgName: null });
-      router.replace('/onboarding');
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        orgSlug: null,
+        orgName: null,
+      });
+      router.replace("/onboarding");
       return;
     }
     router.replace(`/org-deleted?org=${orgSlug}`);
     setShowDeleteConfirm(false);
-    setDeleteInput('');
+    setDeleteInput("");
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     const orgSlug = params?.org;
     if (!orgSlug) return;
-    const confirmed = window.confirm('Delete this event? This cannot be undone.');
+    const confirmed = window.confirm(
+      "Delete this event? This cannot be undone.",
+    );
     if (!confirmed) return;
-    await updateDoc(doc(db, 'orgs', orgSlug), { eventCount: increment(-1) });
-    await deleteDoc(doc(db, 'orgs', orgSlug, 'events', eventId));
+    await updateDoc(doc(db, "orgs", orgSlug), { eventCount: increment(-1) });
+    await deleteDoc(doc(db, "orgs", orgSlug, "events", eventId));
     setEvents((prev) => prev.filter((item) => item.id !== eventId));
   };
 
@@ -195,29 +234,43 @@ export default function OrgDashboardPage() {
   };
 
   const today = new Date();
-  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const normalizedToday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  ).getTime();
   const filteredEvents = events
     .filter((event) => {
       if (!search.trim()) return true;
-      const haystack = `${event.name ?? ''} ${event.location ?? ''}`.toLowerCase();
+      const haystack =
+        `${event.name ?? ""} ${event.location ?? ""}`.toLowerCase();
       return haystack.includes(search.trim().toLowerCase());
     })
     .filter((event) => {
-      if (filter === 'all') return true;
+      if (filter === "all") return true;
       if (!event.date) return false;
       const eventTime = new Date(event.date).getTime();
       if (Number.isNaN(eventTime)) return false;
-      return filter === 'upcoming' ? eventTime >= normalizedToday : eventTime < normalizedToday;
+      return filter === "upcoming"
+        ? eventTime >= normalizedToday
+        : eventTime < normalizedToday;
     })
     .sort((a, b) => {
-      const aTime = a.date ? new Date(a.date).getTime() : Number.MAX_SAFE_INTEGER;
-      const bTime = b.date ? new Date(b.date).getTime() : Number.MAX_SAFE_INTEGER;
-      return sortDir === 'asc' ? aTime - bTime : bTime - aTime;
+      const aTime = a.date
+        ? new Date(a.date).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      const bTime = b.date
+        ? new Date(b.date).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      return sortDir === "asc" ? aTime - bTime : bTime - aTime;
     });
 
   const totalPages = Math.max(1, Math.ceil(filteredEvents.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedEvents = filteredEvents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedEvents = filteredEvents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   const totalEvents = events.length;
   const upcomingEvents = events.filter((event) => {
@@ -232,12 +285,15 @@ export default function OrgDashboardPage() {
   }).length;
   const nextEvent = filteredEvents.find((event) => event.date);
   const nextEventDateTime = nextEvent?.date
-    ? `${nextEvent.date}${nextEvent.time ? ` ${nextEvent.time}` : ''}`
+    ? `${nextEvent.date}${nextEvent.time ? ` ${nextEvent.time}` : ""}`
     : undefined;
-  const peakWindow = nextEvent?.peakStart || nextEvent?.peakEnd
-    ? `${nextEvent?.peakStart ?? '0'} - ${nextEvent?.peakEnd ?? '0'}`
-    : '0';
-  const avgScan = nextEvent?.avgScanSeconds ? `${nextEvent.avgScanSeconds} sec` : '0';
+  const peakWindow =
+    nextEvent?.peakStart || nextEvent?.peakEnd
+      ? `${nextEvent?.peakStart ?? "0"} - ${nextEvent?.peakEnd ?? "0"}`
+      : "0";
+  const avgScan = nextEvent?.avgScanSeconds
+    ? `${nextEvent.avgScanSeconds} sec`
+    : "0";
 
   if (loading) {
     return (
@@ -255,25 +311,52 @@ export default function OrgDashboardPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
-        <motion.nav initial="hidden" animate="show" variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
+        <motion.nav
+          initial="hidden"
+          animate="show"
+          variants={fadeUp}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12"
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">A</div>
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
+              A
+            </div>
             <div>
               <div className="flex items-center gap-2">
-                <div className="font-bold text-xl tracking-tight">{org?.name ?? 'Organization'}</div>
+                <div className="font-bold text-xl tracking-tight">
+                  {org?.name ?? "Organization"}
+                </div>
                 <span
                   className={`text-[10px] uppercase tracking-widest font-black px-2 py-1 rounded-full border ${
-                    isFree ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    isFree
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
                   }`}
                 >
-                  {isFree ? 'Free' : 'Pro'}
+                  {isFree ? "Free" : "Pro"}
                 </span>
+                {uid === siteOwnerUid && org?.ownerId !== siteOwnerUid ? (
+                  <button
+                    type="button"
+                    className="text-[10px] uppercase tracking-widest font-black px-2 py-1 rounded-full border border-slate-200 text-slate-600 hover:text-slate-900"
+                    onClick={async () => {
+                      const nextPlan = orgPlan === "pro" ? "free" : "pro";
+                      await updateDoc(doc(db, "orgs", params.org), { plan: nextPlan });
+                      setOrgPlan(nextPlan);
+                    }}
+                  >
+                    Set {orgPlan === "pro" ? "Free" : "Pro"}
+                  </button>
+                ) : null}
               </div>
               <div className="text-xs text-slate-500">Dashboard</div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <Link className="px-4 py-2 rounded-full bg-slate-100 text-slate-700" href="/">
+            <Link
+              className="px-4 py-2 rounded-full bg-slate-100 text-slate-700"
+              href="/"
+            >
               Marketing site
             </Link>
             <div className="relative">
@@ -282,12 +365,14 @@ export default function OrgDashboardPage() {
                 className="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 inline-flex items-center gap-2"
                 onClick={() => setOrgMenuOpen((prev) => !prev)}
               >
-                {org?.name ?? 'Switch org'}
+                {org?.name ?? "Switch org"}
                 <span className="text-slate-500">▾</span>
               </button>
               {orgMenuOpen ? (
                 <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-lg text-sm z-20">
-                  <div className="px-4 py-2 text-xs text-slate-500">Your organizations</div>
+                  <div className="px-4 py-2 text-xs text-slate-500">
+                    Your organizations
+                  </div>
                   {orgs.map((item) => (
                     <Link
                       key={item.slug}
@@ -301,17 +386,21 @@ export default function OrgDashboardPage() {
                   <button
                     type="button"
                     className={`w-full text-left px-4 py-2 ${
-                      isFree && orgs.length >= 2 ? 'text-slate-400 cursor-not-allowed' : 'hover:bg-slate-50'
+                      isFree && orgs.length >= 2
+                        ? "text-slate-400 cursor-not-allowed"
+                        : "hover:bg-slate-50"
                     }`}
                     onClick={() => {
                       if (isFree && orgs.length >= 2) {
                         setUpgradeOpen(true);
                       } else {
-                        router.replace('/onboarding?newOrg=1');
+                        router.replace("/onboarding?newOrg=1");
                       }
                     }}
                   >
-                    {isFree && orgs.length >= 2 ? 'Org limit reached' : '+ Add new org'}
+                    {isFree && orgs.length >= 2
+                      ? "Org limit reached"
+                      : "+ Add new org"}
                   </button>
                   <button
                     type="button"
@@ -323,22 +412,48 @@ export default function OrgDashboardPage() {
                 </div>
               ) : null}
             </div>
-            <button className="px-4 py-2 rounded-full bg-slate-900 text-white" onClick={handleSignOut}>
+            <button
+              className="px-4 py-2 rounded-full bg-slate-900 text-white"
+              onClick={handleSignOut}
+            >
               Sign out
             </button>
+            {uid === siteOwnerUid ? (
+              <Link
+                className="px-4 py-2 rounded-full bg-slate-100 text-slate-700 border border-slate-200"
+                href={`/${params.org}/admin`}
+              >
+                Admin
+              </Link>
+            ) : null}
           </div>
         </motion.nav>
 
-        <motion.section initial="hidden" animate="show" variants={fadeUp} className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        {uid === siteOwnerUid && org?.blocked ? (
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            This organization is currently blocked.
+          </div>
+        ) : null}
+        <motion.section
+          initial="hidden"
+          animate="show"
+          variants={fadeUp}
+          className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6"
+        >
           <div>
-          <h1 className="text-3xl md:text-4xl font-black mb-3">Welcome{user?.name ? `, ${user.name}` : ''}.</h1>
-          <p className="text-slate-600">Here is your live event overview for {org?.name ?? 'your organization'}.</p>
+            <h1 className="text-3xl md:text-4xl font-black mb-3">
+              Welcome{user?.name ? `, ${user.name}` : ""}.
+            </h1>
+            <p className="text-slate-600">
+              Here is your live event overview for{" "}
+              {org?.name ?? "your organization"}.
+            </p>
           </div>
           <Link
             className={`px-5 py-3 rounded-2xl font-bold text-sm ${
               isFree && events.length >= maxEvents
-                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-500 text-white'
+                ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-500 text-white"
             }`}
             href={`/${params.org}/create-new-event`}
             onClick={(event) => {
@@ -348,18 +463,39 @@ export default function OrgDashboardPage() {
               }
             }}
           >
-            {isFree && events.length >= maxEvents ? 'Event limit reached' : 'Create event'}
+            {isFree && events.length >= maxEvents
+              ? "Event limit reached"
+              : "Create event"}
           </Link>
         </motion.section>
 
         <section className="grid md:grid-cols-3 gap-6">
           {[
-            { label: 'Total events', value: String(totalEvents), note: `${upcomingEvents} upcoming` },
-            { label: 'Upcoming events', value: String(upcomingEvents), note: nextEvent?.name ? `Next: ${nextEvent.name}` : 'No upcoming events' },
-            { label: 'Past events', value: String(pastEvents), note: pastEvents ? 'Archived and searchable' : 'No past events' },
+            {
+              label: "Total events",
+              value: String(totalEvents),
+              note: `${upcomingEvents} upcoming`,
+            },
+            {
+              label: "Upcoming events",
+              value: String(upcomingEvents),
+              note: nextEvent?.name
+                ? `Next: ${nextEvent.name}`
+                : "No upcoming events",
+            },
+            {
+              label: "Past events",
+              value: String(pastEvents),
+              note: pastEvents ? "Archived and searchable" : "No past events",
+            },
           ].map((card) => (
-            <div key={card.label} className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-              <div className="text-xs uppercase tracking-widest text-slate-500">{card.label}</div>
+            <div
+              key={card.label}
+              className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm"
+            >
+              <div className="text-xs uppercase tracking-widest text-slate-500">
+                {card.label}
+              </div>
               <div className="text-3xl font-black mt-2">{card.value}</div>
               <div className="text-sm text-slate-500 mt-2">{card.note}</div>
             </div>
@@ -371,7 +507,9 @@ export default function OrgDashboardPage() {
             <h2 className="text-lg font-bold">Your events</h2>
             <Link
               className={`text-sm ${
-                isFree && events.length >= maxEvents ? 'text-slate-400 cursor-not-allowed' : 'text-blue-400 hover:text-blue-300'
+                isFree && events.length >= maxEvents
+                  ? "text-slate-400 cursor-not-allowed"
+                  : "text-blue-400 hover:text-blue-300"
               }`}
               href={`/${params.org}/create-new-event`}
               onClick={(event) => {
@@ -381,7 +519,9 @@ export default function OrgDashboardPage() {
                 }
               }}
             >
-              {isFree && events.length >= maxEvents ? 'Event limit reached' : 'Create another event'}
+              {isFree && events.length >= maxEvents
+                ? "Event limit reached"
+                : "Create another event"}
             </Link>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
@@ -395,19 +535,25 @@ export default function OrgDashboardPage() {
               }}
             />
             <div className="flex items-center gap-2 text-sm">
-              {(['all', 'upcoming', 'past'] as const).map((item) => (
+              {(["all", "upcoming", "past"] as const).map((item) => (
                 <button
                   key={item}
                   type="button"
                   className={`px-3 py-2 rounded-full border ${
-                    filter === item ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-200 text-slate-600'
+                    filter === item
+                      ? "bg-blue-600 border-blue-500 text-white"
+                      : "border-slate-200 text-slate-600"
                   }`}
                   onClick={() => {
                     setFilter(item);
                     setPage(1);
                   }}
                 >
-                  {item === 'all' ? 'All' : item === 'upcoming' ? 'Upcoming' : 'Past'}
+                  {item === "all"
+                    ? "All"
+                    : item === "upcoming"
+                      ? "Upcoming"
+                      : "Past"}
                 </button>
               ))}
             </div>
@@ -415,9 +561,11 @@ export default function OrgDashboardPage() {
               <button
                 type="button"
                 className="px-3 py-2 rounded-full border border-slate-200 text-slate-600 hover:text-slate-900"
-                onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                onClick={() =>
+                  setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
               >
-                Sort: {sortDir === 'asc' ? 'Date asc' : 'Date desc'}
+                Sort: {sortDir === "asc" ? "Date asc" : "Date desc"}
               </button>
             </div>
           </div>
@@ -427,7 +575,9 @@ export default function OrgDashboardPage() {
               Loading events...
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div className="text-sm text-slate-500">No events yet. Create your first event.</div>
+            <div className="text-sm text-slate-500">
+              No events yet. Create your first event.
+            </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
               {pagedEvents.map((event) => (
@@ -436,15 +586,22 @@ export default function OrgDashboardPage() {
                   className="p-5 bg-white border border-slate-200 rounded-3xl hover:border-blue-500/40 transition-colors shadow-sm"
                 >
                   <Link href={`/${params.org}/${event.id}`}>
-                    <div className="text-lg font-bold mb-1">{event.name ?? event.id}</div>
-                    <div className="text-sm text-slate-600">
-                      {event.date ? `Date: ${event.date}` : 'Date: TBD'}
-                      {event.time ? ` - Time: ${event.time}` : ' - Time: TBD'}
+                    <div className="text-lg font-bold mb-1">
+                      {event.name ?? event.id}
                     </div>
-                    <div className="text-xs text-slate-500 mt-2">{event.location ?? 'Location: TBD'}</div>
+                    <div className="text-sm text-slate-600">
+                      {event.date ? `Date: ${event.date}` : "Date: TBD"}
+                      {event.time ? ` - Time: ${event.time}` : " - Time: TBD"}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-2">
+                      {event.location ?? "Location: TBD"}
+                    </div>
                   </Link>
                   <div className="flex items-center gap-3 mt-4 text-sm">
-                    <Link className="text-blue-400 hover:text-blue-300" href={`/${params.org}/${event.id}`}>
+                    <Link
+                      className="text-blue-400 hover:text-blue-300"
+                      href={`/${params.org}/${event.id}`}
+                    >
                       Edit
                     </Link>
                     <button
@@ -476,7 +633,9 @@ export default function OrgDashboardPage() {
                 <button
                   type="button"
                   className="px-3 py-2 rounded-full border border-slate-200 disabled:opacity-40"
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  onClick={() =>
+                    setPage((prev) => Math.min(totalPages, prev + 1))
+                  }
                   disabled={currentPage === totalPages}
                 >
                   Next
@@ -492,7 +651,7 @@ export default function OrgDashboardPage() {
             <div className="space-y-4 text-sm text-slate-600">
               <div className="flex items-center justify-between">
                 <span>Gates open</span>
-                <span>{nextEvent?.gatesOpen || nextEventDateTime || '0'}</span>
+                <span>{nextEvent?.gatesOpen || nextEventDateTime || "0"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Peak window</span>
@@ -513,7 +672,6 @@ export default function OrgDashboardPage() {
             </div>
           </div>
         </section>
-
       </div>
 
       {showDeleteConfirm ? (
@@ -524,14 +682,15 @@ export default function OrgDashboardPage() {
             className="absolute inset-0 bg-black/60"
             onClick={() => {
               setShowDeleteConfirm(false);
-              setDeleteInput('');
+              setDeleteInput("");
             }}
           />
           <div className="relative z-10 w-full max-w-[480px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl">
             <h3 className="text-lg font-bold mb-2">Confirm delete</h3>
             <p className="text-sm text-slate-600 mb-4">
-              Type <span className="font-semibold">{org?.name ?? params?.org}</span> to permanently delete this
-              organization.
+              Type{" "}
+              <span className="font-semibold">{org?.name ?? params?.org}</span>{" "}
+              to permanently delete this organization.
             </p>
             <input
               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
@@ -545,7 +704,7 @@ export default function OrgDashboardPage() {
                 className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
                 onClick={() => {
                   setShowDeleteConfirm(false);
-                  setDeleteInput('');
+                  setDeleteInput("");
                 }}
               >
                 Cancel
@@ -555,7 +714,8 @@ export default function OrgDashboardPage() {
                 className="px-4 py-2 rounded-2xl bg-red-600 text-white disabled:opacity-40"
                 onClick={confirmDeleteOrg}
                 disabled={
-                  deleteInput.trim().toLowerCase() !== (org?.name ?? params?.org ?? '').trim().toLowerCase()
+                  deleteInput.trim().toLowerCase() !==
+                  (org?.name ?? params?.org ?? "").trim().toLowerCase()
                 }
               >
                 Delete org
@@ -586,7 +746,8 @@ export default function OrgDashboardPage() {
             >
               <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
               <p className="text-sm text-slate-600 mb-4">
-                Free mode limits reached. Upgrade to unlock more organizations and events.
+                Free mode limits reached. Upgrade to unlock more organizations
+                and events.
               </p>
               <div className="flex items-center gap-3">
                 <button
@@ -596,10 +757,48 @@ export default function OrgDashboardPage() {
                 >
                   Not now
                 </button>
-                <Link className="px-4 py-2 rounded-2xl bg-blue-600 text-white" href={`/${params.org}/pricing`}>
+                <Link
+                  className="px-4 py-2 rounded-2xl bg-blue-600 text-white"
+                  href={`/${params.org}/pricing`}
+                >
                   View pricing
                 </Link>
               </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {blockedOrgOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setBlockedOrgOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Organization blocked</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                This organization has been blocked by an administrator. Redirecting you to another workspace.
+              </p>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                onClick={() => setBlockedOrgOpen(false)}
+              >
+                Close
+              </button>
             </motion.div>
           </motion.div>
         ) : null}

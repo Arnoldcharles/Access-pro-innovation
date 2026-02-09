@@ -19,7 +19,7 @@ export default function WorkflowPage() {
         <motion.nav initial="hidden" animate="show" variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-16">
           <Link className="flex items-center gap-3" href="/">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">A</div>
-            <span className="font-bold text-xl tracking-tight">AccessPro</span>
+            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
           </Link>
           <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600">
             <Link className="hover:text-white transition-colors" href="/features">Features</Link>
@@ -35,7 +35,7 @@ export default function WorkflowPage() {
           </div>
           <h1 className="text-4xl md:text-6xl font-black leading-tight">A step-by-step workflow your team can trust.</h1>
           <p className="text-slate-600 mt-4 max-w-2xl text-lg leading-relaxed">
-            AccessPro connects every phase of your event journey, from planning to post-event reporting.
+            AccessPro Innovation connects every phase of your event journey, from planning to post-event reporting.
           </p>
         </motion.header>
 
