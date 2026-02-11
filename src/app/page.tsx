@@ -352,14 +352,14 @@ const FixedLandingPage = () => {
               </div>
             ))}
           </motion.div>
-          <motion.div variants={fadeUp} className="mt-6 text-center">
+          {/*<motion.div variants={fadeUp} className="mt-6 text-center">
             <Link
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-slate-300 text-slate-900 font-semibold"
               href="/gallery"
             >
               View full gallery <ArrowRight size={14} />
             </Link>
-          </motion.div>
+          </motion.div>*/}
         </motion.section>
 
         {/* Pricing */}
