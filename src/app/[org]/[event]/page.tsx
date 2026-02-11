@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
-import { onAuthStateChanged } from 'firebase/auth';
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion, cubicBezier } from "framer-motion";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   deleteDoc,
@@ -15,8 +15,8 @@ import {
   serverTimestamp,
   updateDoc,
   writeBatch,
-} from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 type EventData = {
   name?: string;
@@ -46,7 +46,7 @@ type Guest = {
   name: string;
   phone: string;
   email: string;
-  status?: 'invited' | 'accepted' | 'declined';
+  status?: "invited" | "accepted" | "declined";
   checkedIn?: boolean;
   checkedInAt?: string;
   checkInCount?: number;
@@ -63,93 +63,110 @@ export default function EventDashboardPage() {
   const params = useParams<{ org: string; event: string }>();
   const [loading, setLoading] = useState(true);
   const [eventData, setEventData] = useState<EventData | null>(null);
-  const [orgName, setOrgName] = useState('');
+  const [orgName, setOrgName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [name, setName] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [location, setLocation] = useState('');
+  const [error, setError] = useState("");
+  const [name, setName] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [location, setLocation] = useState("");
   const [guests, setGuests] = useState<Guest[]>([]);
   const [pendingGuests, setPendingGuests] = useState<Guest[]>([]);
-  const [guestFirstName, setGuestFirstName] = useState('');
-  const [guestLastName, setGuestLastName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
-  const [guestError, setGuestError] = useState('');
+  const [guestFirstName, setGuestFirstName] = useState("");
+  const [guestLastName, setGuestLastName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestError, setGuestError] = useState("");
   const [guestSaving, setGuestSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFirstName, setEditFirstName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editEmail, setEditEmail] = useState('');
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteMode, setInviteMode] = useState<'single' | 'all'>('single');
+  const [inviteMode, setInviteMode] = useState<"single" | "all">("single");
   const [inviteTarget, setInviteTarget] = useState<InviteTarget | null>(null);
-  const [inviteMessage, setInviteMessage] = useState('');
-  const [inviteLink, setInviteLink] = useState('');
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteStatus, setInviteStatus] = useState('');
+  const [inviteStatus, setInviteStatus] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardGuest, setCardGuest] = useState<Guest | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [uid, setUid] = useState('');
-  const [orgPlan, setOrgPlan] = useState<'free' | 'pro'>('free');
-  const isFree = orgPlan !== 'pro';
+  const [uid, setUid] = useState("");
+  const [orgPlan, setOrgPlan] = useState<"free" | "pro">("free");
+  const isFree = orgPlan !== "pro";
   const maxGuests = 500;
   const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
   const maxScans = isFree ? 5 : Number.MAX_SAFE_INTEGER;
-  const maxScansLabel = isFree ? String(maxScans) : '∞';
+  const maxScansLabel = isFree ? String(maxScans) : "∞";
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace('/sign-in');
+        router.replace("/sign-in");
         return;
       }
       setUid(user.uid);
-      const userSnap = await getDoc(doc(db, 'users', user.uid));
-      const userBlocked = userSnap.exists() ? Boolean((userSnap.data() as { blocked?: boolean }).blocked) : false;
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      const userBlocked = userSnap.exists()
+        ? Boolean((userSnap.data() as { blocked?: boolean }).blocked)
+        : false;
       if (userBlocked) {
         await auth.signOut();
-        router.replace('/sign-in');
+        router.replace("/sign-in");
         return;
       }
       const orgSlug = params?.org;
       const eventSlug = params?.event;
       if (!orgSlug || !eventSlug) return;
 
-      const orgSnap = await getDoc(doc(db, 'orgs', orgSlug));
+      const orgSnap = await getDoc(doc(db, "orgs", orgSlug));
       if (!orgSnap.exists()) {
-        router.replace('/onboarding');
+        router.replace("/onboarding");
         return;
       }
-      const orgData = orgSnap.data() as { name?: string; plan?: 'free' | 'pro'; blocked?: boolean };
+      const orgData = orgSnap.data() as {
+        name?: string;
+        plan?: "free" | "pro";
+        blocked?: boolean;
+      };
       if (orgData.blocked) {
         setBlockedOrgOpen(true);
         setTimeout(() => {
-          router.replace('/onboarding');
+          router.replace("/onboarding");
         }, 1200);
         return;
       }
-      setOrgName(orgData.name ?? '');
-      setOrgPlan(orgData.plan === 'pro' ? 'pro' : 'free');
-      const eventSnap = await getDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug));
+      setOrgName(orgData.name ?? "");
+      setOrgPlan(orgData.plan === "pro" ? "pro" : "free");
+      const eventSnap = await getDoc(
+        doc(db, "orgs", orgSlug, "events", eventSlug),
+      );
       if (!eventSnap.exists()) {
         router.replace(`/${orgSlug}`);
         return;
       }
       const data = eventSnap.data() as EventData;
       setEventData(data);
-      setName(data.name ?? '');
-      setDate(data.date ?? '');
-      setTime(data.time ?? '');
-      setLocation(data.location ?? '');
+      setName(data.name ?? "");
+      setDate(data.date ?? "");
+      setTime(data.time ?? "");
+      setLocation(data.location ?? "");
       if (!data.gatesOpenAt) {
-        await updateDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug), { gatesOpenAt: new Date().toISOString() });
+        await updateDoc(doc(db, "orgs", orgSlug, "events", eventSlug), {
+          gatesOpenAt: new Date().toISOString(),
+        });
       }
-      const guestsRef = collection(db, 'orgs', orgSlug, 'events', eventSlug, 'guests');
+      const guestsRef = collection(
+        db,
+        "orgs",
+        orgSlug,
+        "events",
+        eventSlug,
+        "guests",
+      );
       const unsubGuests = onSnapshot(
         guestsRef,
         (snapshot) => {
@@ -161,9 +178,9 @@ export default function EventDashboardPage() {
         },
         (err) => {
           const code = (err as { code?: string }).code;
-          if (code === 'permission-denied') return;
+          if (code === "permission-denied") return;
           console.error(err);
-        }
+        },
       );
 
       setLoading(false);
@@ -178,17 +195,20 @@ export default function EventDashboardPage() {
     show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: easeOut } },
   };
 
-  const combinedGuests = useMemo(() => [...guests, ...pendingGuests], [guests, pendingGuests]);
+  const combinedGuests = useMemo(
+    () => [...guests, ...pendingGuests],
+    [guests, pendingGuests],
+  );
   const totalGuestCount = guests.length + pendingGuests.length;
 
   const handleAddGuest = () => {
-    setGuestError('');
+    setGuestError("");
     if (isFree && totalGuestCount >= maxGuests) {
       setUpgradeOpen(true);
       return;
     }
     if (!guestFirstName.trim() || !guestLastName.trim() || !guestPhone.trim()) {
-      setGuestError('First name, last name, and phone number are required.');
+      setGuestError("First name, last name, and phone number are required.");
       return;
     }
     const fullName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
@@ -200,15 +220,15 @@ export default function EventDashboardPage() {
         name: fullName,
         phone: guestPhone.trim(),
         email: guestEmail.trim(),
-        status: 'invited',
+        status: "invited",
         checkedIn: false,
         checkInCount: 0,
       },
     ]);
-    setGuestFirstName('');
-    setGuestLastName('');
-    setGuestPhone('');
-    setGuestEmail('');
+    setGuestFirstName("");
+    setGuestLastName("");
+    setGuestPhone("");
+    setGuestEmail("");
   };
 
   const parseCsv = (text: string): Guest[] => {
@@ -218,31 +238,51 @@ export default function EventDashboardPage() {
       .filter(Boolean);
     if (lines.length === 0) return [];
     const header = lines[0].toLowerCase();
-    const hasHeader = header.includes('name') || header.includes('email') || header.includes('phone');
+    const hasHeader =
+      header.includes("name") ||
+      header.includes("email") ||
+      header.includes("phone");
     const startIndex = hasHeader ? 1 : 0;
     return lines.slice(startIndex).map((line) => {
-      const [firstName = '', lastName = '', phone = '', email = ''] = line.split(',').map((value) => value.trim());
+      const [firstName = "", lastName = "", phone = "", email = ""] = line
+        .split(",")
+        .map((value) => value.trim());
       const name = `${firstName} ${lastName}`.trim();
-      return { firstName, lastName, name, phone, email, status: 'invited', checkedIn: false, checkInCount: 0 };
+      return {
+        firstName,
+        lastName,
+        name,
+        phone,
+        email,
+        status: "invited",
+        checkedIn: false,
+        checkInCount: 0,
+      };
     });
   };
 
-  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    setGuestError('');
+  const handleImportFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    setGuestError("");
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.type === 'application/pdf') {
-      setGuestError('PDF import is not supported yet. Please upload a CSV file.');
+    if (file.type === "application/pdf") {
+      setGuestError(
+        "PDF import is not supported yet. Please upload a CSV file.",
+      );
       return;
     }
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setGuestError('Please upload a CSV file.');
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setGuestError("Please upload a CSV file.");
       return;
     }
     const text = await file.text();
-    const parsed = parseCsv(text).filter((guest) => guest.name || guest.email || guest.phone);
+    const parsed = parseCsv(text).filter(
+      (guest) => guest.name || guest.email || guest.phone,
+    );
     if (parsed.length === 0) {
-      setGuestError('No guests found in the CSV.');
+      setGuestError("No guests found in the CSV.");
       return;
     }
     if (isFree) {
@@ -253,7 +293,7 @@ export default function EventDashboardPage() {
       }
       const sliced = parsed.slice(0, remaining);
       if (sliced.length < parsed.length) {
-        setGuestError('Guest list truncated to fit free mode limit (500).');
+        setGuestError("Guest list truncated to fit free mode limit (500).");
       }
       setPendingGuests((prev) => [...prev, ...sliced]);
       return;
@@ -271,29 +311,41 @@ export default function EventDashboardPage() {
       return;
     }
     setGuestSaving(true);
-    setGuestError('');
+    setGuestError("");
     try {
       const batch = writeBatch(db);
-      const guestsRef = collection(db, 'orgs', orgSlug, 'events', eventSlug, 'guests');
+      const guestsRef = collection(
+        db,
+        "orgs",
+        orgSlug,
+        "events",
+        eventSlug,
+        "guests",
+      );
       pendingGuests.forEach((guest) => {
         const guestDoc = doc(guestsRef);
         batch.set(guestDoc, {
-          firstName: guest.firstName ?? '',
-          lastName: guest.lastName ?? '',
+          firstName: guest.firstName ?? "",
+          lastName: guest.lastName ?? "",
           name: guest.name,
           phone: guest.phone,
           email: guest.email,
-          status: guest.status ?? 'invited',
+          status: guest.status ?? "invited",
           checkedIn: guest.checkedIn ?? false,
           checkInCount: guest.checkInCount ?? 0,
           createdAt: new Date().toISOString(),
         });
       });
-      batch.set(doc(db, 'orgs', orgSlug, 'events', eventSlug), { guestCount: increment(pendingGuests.length) }, { merge: true });
+      batch.set(
+        doc(db, "orgs", orgSlug, "events", eventSlug),
+        { guestCount: increment(pendingGuests.length) },
+        { merge: true },
+      );
       await batch.commit();
       setPendingGuests([]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to save guests';
+      const message =
+        err instanceof Error ? err.message : "Unable to save guests";
       setGuestError(message);
     } finally {
       setGuestSaving(false);
@@ -301,16 +353,16 @@ export default function EventDashboardPage() {
   };
 
   const buildInviteMessage = (name: string) =>
-    `Hi ${name}, you are invited to ${eventData?.name ?? 'our event'} on ${eventData?.date ?? 'TBD'} at ${
-      eventData?.location ?? 'TBD'
+    `Hi ${name}, you are invited to ${eventData?.name ?? "our event"} on ${eventData?.date ?? "TBD"} at ${
+      eventData?.location ?? "TBD"
     }.`;
 
-  const openInviteModal = (mode: 'single' | 'all', target?: InviteTarget) => {
+  const openInviteModal = (mode: "single" | "all", target?: InviteTarget) => {
     setInviteMode(mode);
     setInviteTarget(target ?? null);
-    setInviteMessage(buildInviteMessage(target?.name ?? 'there'));
-    setInviteLink('');
-    setInviteStatus('');
+    setInviteMessage(buildInviteMessage(target?.name ?? "there"));
+    setInviteLink("");
+    setInviteStatus("");
     setInviteOpen(true);
   };
 
@@ -325,27 +377,39 @@ export default function EventDashboardPage() {
   };
 
   const createToken = () => {
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto)
+      return crypto.randomUUID();
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   };
 
-  const sendWhatsAppPlaceholder = async (phone: string, message: string, link: string) => {
+  const sendWhatsAppPlaceholder = async (
+    phone: string,
+    message: string,
+    link: string,
+  ) => {
     // Placeholder only. Replace with WhatsApp Business API/Twilio integration.
-    console.log('Send WhatsApp to', phone, message, link);
+    console.log("Send WhatsApp to", phone, message, link);
   };
 
   const handleSendInvites = async () => {
     const orgSlug = params?.org;
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug) return;
-    if (inviteMode === 'single' && !inviteTarget) return;
+    if (inviteMode === "single" && !inviteTarget) return;
     setInviteLoading(true);
-    setInviteStatus('');
+    setInviteStatus("");
     try {
       const batch = writeBatch(db);
-      const invitesRef = collection(db, 'orgs', orgSlug, 'events', eventSlug, 'invites');
+      const invitesRef = collection(
+        db,
+        "orgs",
+        orgSlug,
+        "events",
+        eventSlug,
+        "invites",
+      );
 
-      if (inviteMode === 'single' && inviteTarget) {
+      if (inviteMode === "single" && inviteTarget) {
         const token = createToken();
         const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
         batch.set(doc(invitesRef, token), {
@@ -353,31 +417,33 @@ export default function EventDashboardPage() {
           guestName: inviteTarget.name,
           guestPhone: inviteTarget.phone,
           guestEmail: inviteTarget.email,
-          eventName: eventData?.name ?? '',
-          eventDate: eventData?.date ?? '',
-          eventLocation: eventData?.location ?? '',
+          eventName: eventData?.name ?? "",
+          eventDate: eventData?.date ?? "",
+          eventLocation: eventData?.location ?? "",
           message: inviteMessage,
-          imageDataUrl: eventData?.imageDataUrl ?? '',
+          imageDataUrl: eventData?.imageDataUrl ?? "",
           qrX: eventData?.qrX ?? 0.1,
           qrY: eventData?.qrY ?? 0.1,
           qrSize: eventData?.qrSize ?? 96,
           nameX: eventData?.nameX ?? 0.1,
           nameY: eventData?.nameY ?? 0.3,
-          nameColor: eventData?.nameColor ?? '#111827',
+          nameColor: eventData?.nameColor ?? "#111827",
           nameSize: eventData?.nameSize ?? 16,
-          nameFont: eventData?.nameFont ?? 'Arial, sans-serif',
+          nameFont: eventData?.nameFont ?? "Arial, sans-serif",
           used: false,
           createdAt: serverTimestamp(),
         });
         await batch.commit();
         setInviteLink(link);
         await sendWhatsAppPlaceholder(inviteTarget.phone, inviteMessage, link);
-        setInviteStatus('Invite created and queued for WhatsApp (placeholder).');
+        setInviteStatus(
+          "Invite created and queued for WhatsApp (placeholder).",
+        );
       }
 
-      if (inviteMode === 'all') {
+      if (inviteMode === "all") {
         if (guests.length === 0) {
-          setInviteStatus('No saved guests to invite. Save guests first.');
+          setInviteStatus("No saved guests to invite. Save guests first.");
           setInviteLoading(false);
           return;
         }
@@ -389,28 +455,31 @@ export default function EventDashboardPage() {
             guestName: guest.name,
             guestPhone: guest.phone,
             guestEmail: guest.email,
-            eventName: eventData?.name ?? '',
-            eventDate: eventData?.date ?? '',
-            eventLocation: eventData?.location ?? '',
+            eventName: eventData?.name ?? "",
+            eventDate: eventData?.date ?? "",
+            eventLocation: eventData?.location ?? "",
             message: buildInviteMessage(guest.name),
-            imageDataUrl: eventData?.imageDataUrl ?? '',
+            imageDataUrl: eventData?.imageDataUrl ?? "",
             qrX: eventData?.qrX ?? 0.1,
             qrY: eventData?.qrY ?? 0.1,
             qrSize: eventData?.qrSize ?? 96,
             nameX: eventData?.nameX ?? 0.1,
             nameY: eventData?.nameY ?? 0.3,
-            nameColor: eventData?.nameColor ?? '#111827',
+            nameColor: eventData?.nameColor ?? "#111827",
             nameSize: eventData?.nameSize ?? 16,
-            nameFont: eventData?.nameFont ?? 'Arial, sans-serif',
+            nameFont: eventData?.nameFont ?? "Arial, sans-serif",
             used: false,
             createdAt: serverTimestamp(),
           });
         });
         await batch.commit();
-        setInviteStatus(`Invites created for ${guests.length} guests (placeholder WhatsApp send).`);
+        setInviteStatus(
+          `Invites created for ${guests.length} guests (placeholder WhatsApp send).`,
+        );
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to create invites';
+      const message =
+        err instanceof Error ? err.message : "Unable to create invites";
       setInviteStatus(message);
     } finally {
       setInviteLoading(false);
@@ -420,42 +489,48 @@ export default function EventDashboardPage() {
   const startEdit = (guest: Guest) => {
     if (!guest.id) return;
     setEditingId(guest.id);
-    const fallbackName = guest.name ?? '';
-    setEditFirstName(guest.firstName ?? fallbackName.split(' ')[0] ?? '');
-    setEditLastName(guest.lastName ?? fallbackName.split(' ').slice(1).join(' ') ?? '');
+    const fallbackName = guest.name ?? "";
+    setEditFirstName(guest.firstName ?? fallbackName.split(" ")[0] ?? "");
+    setEditLastName(
+      guest.lastName ?? fallbackName.split(" ").slice(1).join(" ") ?? "",
+    );
     setEditPhone(guest.phone);
     setEditEmail(guest.email);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditFirstName('');
-    setEditLastName('');
-    setEditPhone('');
-    setEditEmail('');
+    setEditFirstName("");
+    setEditLastName("");
+    setEditPhone("");
+    setEditEmail("");
   };
 
   const handleSaveEdit = async () => {
     const orgSlug = params?.org;
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug || !editingId) return;
-    setGuestError('');
+    setGuestError("");
     if (!editFirstName.trim() || !editLastName.trim() || !editPhone.trim()) {
-      setGuestError('First name, last name, and phone number are required.');
+      setGuestError("First name, last name, and phone number are required.");
       return;
     }
     try {
       const fullName = `${editFirstName.trim()} ${editLastName.trim()}`.trim();
-      await updateDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug, 'guests', editingId), {
-        firstName: editFirstName.trim(),
-        lastName: editLastName.trim(),
-        name: fullName,
-        phone: editPhone.trim(),
-        email: editEmail.trim(),
-      });
+      await updateDoc(
+        doc(db, "orgs", orgSlug, "events", eventSlug, "guests", editingId),
+        {
+          firstName: editFirstName.trim(),
+          lastName: editLastName.trim(),
+          name: fullName,
+          phone: editPhone.trim(),
+          email: editEmail.trim(),
+        },
+      );
       cancelEdit();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to update guest';
+      const message =
+        err instanceof Error ? err.message : "Unable to update guest";
       setGuestError(message);
     }
   };
@@ -464,15 +539,21 @@ export default function EventDashboardPage() {
     const orgSlug = params?.org;
     const eventSlug = params?.event;
     if (guest.id && orgSlug && eventSlug) {
-      const confirmed = window.confirm('Delete this guest?');
+      const confirmed = window.confirm("Delete this guest?");
       if (!confirmed) return;
       const batch = writeBatch(db);
-      batch.delete(doc(db, 'orgs', orgSlug, 'events', eventSlug, 'guests', guest.id));
-      batch.set(doc(db, 'orgs', orgSlug, 'events', eventSlug), { guestCount: increment(-1) }, { merge: true });
+      batch.delete(
+        doc(db, "orgs", orgSlug, "events", eventSlug, "guests", guest.id),
+      );
+      batch.set(
+        doc(db, "orgs", orgSlug, "events", eventSlug),
+        { guestCount: increment(-1) },
+        { merge: true },
+      );
       await batch.commit();
       return;
     }
-    if (typeof index === 'number') {
+    if (typeof index === "number") {
       setPendingGuests((prev) => prev.filter((_, i) => i !== index));
     }
   };
@@ -483,9 +564,9 @@ export default function EventDashboardPage() {
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug) return;
     setSaving(true);
-    setError('');
+    setError("");
     try {
-      await updateDoc(doc(db, 'orgs', orgSlug, 'events', eventSlug), {
+      await updateDoc(doc(db, "orgs", orgSlug, "events", eventSlug), {
         name,
         date,
         time,
@@ -493,7 +574,8 @@ export default function EventDashboardPage() {
       });
       setEventData((prev) => ({ ...(prev ?? {}), name, date, time, location }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to update event';
+      const message =
+        err instanceof Error ? err.message : "Unable to update event";
       setError(message);
     } finally {
       setSaving(false);
@@ -504,11 +586,17 @@ export default function EventDashboardPage() {
     const orgSlug = params?.org;
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug) return;
-    const confirmed = window.confirm('Delete this event? This cannot be undone.');
+    const confirmed = window.confirm(
+      "Delete this event? This cannot be undone.",
+    );
     if (!confirmed) return;
     const batch = writeBatch(db);
-    batch.delete(doc(db, 'orgs', orgSlug, 'events', eventSlug));
-    batch.set(doc(db, 'orgs', orgSlug), { eventCount: increment(-1) }, { merge: true });
+    batch.delete(doc(db, "orgs", orgSlug, "events", eventSlug));
+    batch.set(
+      doc(db, "orgs", orgSlug),
+      { eventCount: increment(-1) },
+      { merge: true },
+    );
     await batch.commit();
     router.replace(`/${orgSlug}`);
   };
@@ -531,49 +619,64 @@ export default function EventDashboardPage() {
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
         <motion.div initial="hidden" animate="show" variants={fadeUp}>
-          <Link className="text-sm text-slate-600 hover:text-slate-900" href={`/${params.org}`}>
-            Back to {orgName || 'dashboard'}
+          <Link
+            className="text-sm text-slate-600 hover:text-slate-900"
+            href={`/${params.org}`}
+          >
+            Back to {orgName || "dashboard"}
           </Link>
-          <h1 className="text-3xl md:text-4xl font-black mt-6 mb-3">{eventData?.name ?? 'Event'}</h1>
+          <h1 className="text-3xl md:text-4xl font-black mt-6 mb-3">
+            {eventData?.name ?? "Event"}
+          </h1>
           <p className="text-slate-600 mb-8">
-            {eventData?.date ? `Date: ${eventData.date}` : 'Date: TBD'}
-            {eventData?.time ? ` - Time: ${eventData.time}` : ' - Time: TBD'} -{' '}
-            {eventData?.location ?? 'Location: TBD'}
+            {eventData?.date ? `Date: ${eventData.date}` : "Date: TBD"}
+            {eventData?.time
+              ? ` - Time: ${eventData.time}`
+              : " - Time: TBD"} - {eventData?.location ?? "Location: TBD"}
           </p>
           <div className="grid sm:grid-cols-3 gap-3 text-xs text-slate-500">
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-              Gates open:{' '}
+              Gates open:{" "}
               {eventData?.gatesOpenAt
-                ? new Date(eventData.gatesOpenAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-                : '0'}
+                ? new Date(eventData.gatesOpenAt).toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : "0"}
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-              Peak window:{' '}
+              Peak window:{" "}
               {(() => {
                 const checked = guests.filter((g) => g.checkedInAt);
-                if (checked.length === 0) return '0';
+                if (checked.length === 0) return "0";
                 const counts: Record<number, number> = {};
                 checked.forEach((g) => {
                   const d = new Date(g.checkedInAt as string);
                   const hour = d.getHours();
                   counts[hour] = (counts[hour] ?? 0) + 1;
                 });
-                const top = Object.entries(counts).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
-                if (!top) return '0';
+                const top = Object.entries(counts).sort(
+                  (a, b) => Number(b[1]) - Number(a[1]),
+                )[0];
+                if (!top) return "0";
                 const hour = Number(top[0]);
                 const start = new Date();
                 start.setHours(hour, 0, 0, 0);
                 const end = new Date();
                 end.setHours(hour + 1, 0, 0, 0);
-                const fmt = (value: Date) => value.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                const fmt = (value: Date) =>
+                  value.toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
                 return `${fmt(start)} - ${fmt(end)}`;
               })()}
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-              Avg scan:{' '}
+              Avg scan:{" "}
               {eventData?.scanCount
                 ? `${Math.round((eventData.scanTotalMs ?? 0) / eventData.scanCount)} ms`
-                : '0'}
+                : "0"}
             </div>
           </div>
           <div className="mt-4">
@@ -585,7 +688,9 @@ export default function EventDashboardPage() {
             </Link>
             <Link
               className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-semibold ml-3 ${
-                isFree ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white'
+                isFree
+                  ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                  : "bg-slate-900 text-white"
               }`}
               href={`/${params.org}/${params.event}/scan`}
               onClick={(event) => {
@@ -595,19 +700,32 @@ export default function EventDashboardPage() {
                 }
               }}
             >
-              {isFree ? 'QR scanning disabled' : 'Open scanner'}
+              {isFree ? "QR scanning disabled" : "Open scanner"}
             </Link>
           </div>
         </motion.div>
 
         <section className="grid md:grid-cols-3 gap-6">
           {[
-            { label: 'Registrations', value: '0', note: 'Import guest list to begin' },
-            { label: 'Checked-in', value: '0', note: 'Check-in opens on event day' },
-            { label: 'Staff assigned', value: '0', note: 'Assign your team' },
+            {
+              label: "Registrations",
+              value: "0",
+              note: "Import guest list to begin",
+            },
+            {
+              label: "Checked-in",
+              value: "0",
+              note: "Check-in opens on event day",
+            },
+            { label: "Staff assigned", value: "0", note: "Assign your team" },
           ].map((card) => (
-            <div key={card.label} className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-              <div className="text-xs uppercase tracking-widest text-slate-500">{card.label}</div>
+            <div
+              key={card.label}
+              className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm"
+            >
+              <div className="text-xs uppercase tracking-widest text-slate-500">
+                {card.label}
+              </div>
               <div className="text-3xl font-black mt-2">{card.value}</div>
               <div className="text-sm text-slate-500 mt-2">{card.note}</div>
             </div>
@@ -652,13 +770,19 @@ export default function EventDashboardPage() {
                   disabled={saving}
                   className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm"
                 >
-                  {saving ? 'Saving...' : 'Save changes'}
+                  {saving ? "Saving..." : "Save changes"}
                 </button>
-                <button type="button" className="text-red-400 hover:text-red-300 text-sm" onClick={handleDelete}>
+                <button
+                  type="button"
+                  className="text-red-400 hover:text-red-300 text-sm"
+                  onClick={handleDelete}
+                >
                   Delete event
                 </button>
               </div>
-              {error ? <div className="text-sm text-red-400">{error}</div> : null}
+              {error ? (
+                <div className="text-sm text-red-400">{error}</div>
+              ) : null}
             </form>
           </div>
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
@@ -713,7 +837,12 @@ export default function EventDashboardPage() {
               </button>
               <label className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm cursor-pointer">
                 Import CSV or PDF
-                <input type="file" accept=".csv,.pdf" className="hidden" onChange={handleImportFile} />
+                <input
+                  type="file"
+                  accept=".csv,.pdf"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
               </label>
               <button
                 type="button"
@@ -721,7 +850,9 @@ export default function EventDashboardPage() {
                 disabled={guestSaving || pendingGuests.length === 0}
                 onClick={handleSaveGuests}
               >
-                {guestSaving ? 'Saving...' : `Save ${pendingGuests.length} guest${pendingGuests.length === 1 ? '' : 's'}`}
+                {guestSaving
+                  ? "Saving..."
+                  : `Save ${pendingGuests.length} guest${pendingGuests.length === 1 ? "" : "s"}`}
               </button>
               {isFree ? (
                 <div className="text-xs text-slate-500">
@@ -731,15 +862,19 @@ export default function EventDashboardPage() {
               <button
                 type="button"
                 className="px-4 py-2 rounded-2xl bg-emerald-600 text-white text-sm"
-                onClick={() => openInviteModal('all')}
+                onClick={() => openInviteModal("all")}
               >
                 Invite all via WhatsApp
               </button>
             </div>
-            {guestError ? <div className="text-sm text-red-500 mb-4">{guestError}</div> : null}
+            {guestError ? (
+              <div className="text-sm text-red-500 mb-4">{guestError}</div>
+            ) : null}
             <div className="space-y-2">
               {combinedGuests.length === 0 ? (
-                <div className="text-sm text-slate-500">No guests added yet.</div>
+                <div className="text-sm text-slate-500">
+                  No guests added yet.
+                </div>
               ) : (
                 <>
                   <div className="hidden sm:grid sm:grid-cols-4 gap-3 text-xs uppercase tracking-widest text-slate-500 px-2">
@@ -749,117 +884,152 @@ export default function EventDashboardPage() {
                     <div>Status</div>
                   </div>
                   {combinedGuests.map((guest, index) => {
-                  const isPending = !guest.id;
-                  const isEditing = editingId === guest.id;
-                  return (
-                    <div key={`${guest.email}-${index}`} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                      {isEditing ? (
-                        <div className="space-y-3">
-                          <div className="grid sm:grid-cols-4 gap-3">
-                            <input
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                              value={editFirstName}
-                              onChange={(event) => setEditFirstName(event.target.value)}
-                            />
-                            <input
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                              value={editLastName}
-                              onChange={(event) => setEditLastName(event.target.value)}
-                            />
-                            <input
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                              value={editPhone}
-                              onChange={(event) => setEditPhone(event.target.value)}
-                            />
-                            <input
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                              value={editEmail}
-                              onChange={(event) => setEditEmail(event.target.value)}
-                            />
-                          </div>
-                          <div className="flex items-center gap-3 text-sm">
-                            <button type="button" className="text-blue-400 hover:text-blue-300" onClick={handleSaveEdit}>
-                              Save
-                            </button>
-                            <button type="button" className="text-slate-400 hover:text-white" onClick={cancelEdit}>
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid sm:grid-cols-4 gap-3 text-sm items-center">
-                          <div>
-                            {(guest.firstName || guest.lastName)
-                              ? `${guest.firstName ?? ''} ${guest.lastName ?? ''}`.trim()
-                              : guest.name || 'Unnamed'}
-                          </div>
-                          <div className="text-slate-400">{guest.phone || 'No phone'}</div>
-                          <div className="text-slate-400">{guest.email || 'No email'}</div>
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-xs text-slate-500">
-                              {guest.status ?? 'invited'}{' '}
-                              {guest.checkedIn ? `· Checked-in (${guest.checkInCount ?? 0}/${maxScansLabel})` : ''}
+                    const isPending = !guest.id;
+                    const isEditing = editingId === guest.id;
+                    return (
+                      <div
+                        key={`${guest.email}-${index}`}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"
+                      >
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div className="grid sm:grid-cols-4 gap-3">
+                              <input
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                                value={editFirstName}
+                                onChange={(event) =>
+                                  setEditFirstName(event.target.value)
+                                }
+                              />
+                              <input
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                                value={editLastName}
+                                onChange={(event) =>
+                                  setEditLastName(event.target.value)
+                                }
+                              />
+                              <input
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                                value={editPhone}
+                                onChange={(event) =>
+                                  setEditPhone(event.target.value)
+                                }
+                              />
+                              <input
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                                value={editEmail}
+                                onChange={(event) =>
+                                  setEditEmail(event.target.value)
+                                }
+                              />
                             </div>
-                            <div className="relative">
+                            <div className="flex items-center gap-3 text-sm">
                               <button
                                 type="button"
-                                className="px-2 py-1 rounded-full border border-slate-200 text-slate-600 hover:text-slate-900"
-                                onClick={() => setMenuOpenId((prev) => (prev === guest.id ? null : guest.id ?? null))}
+                                className="text-blue-400 hover:text-blue-300"
+                                onClick={handleSaveEdit}
                               >
-                                ⋮
+                                Save
                               </button>
-                              {menuOpenId === guest.id ? (
-                                <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg text-sm z-10">
-                                  {!isPending ? (
-                                    <button
-                                      type="button"
-                                      className="w-full text-left px-4 py-2 hover:bg-slate-50"
-                                      onClick={() =>
-                                        openInviteModal('single', {
-                                          name: guest.name,
-                                          phone: guest.phone,
-                                          email: guest.email,
-                                        })
-                                      }
-                                    >
-                                      Invite guest
-                                    </button>
-                                  ) : null}
-                                  {!isPending ? (
-                                    <button
-                                      type="button"
-                                      className="w-full text-left px-4 py-2 hover:bg-slate-50"
-                                      onClick={() => openGuestCard(guest)}
-                                    >
-                                      View guest image card
-                                    </button>
-                                  ) : null}
-                                  {!isPending ? (
-                                    <button
-                                      type="button"
-                                      className="w-full text-left px-4 py-2 hover:bg-slate-50"
-                                      onClick={() => startEdit(guest)}
-                                    >
-                                      Edit guest
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-500"
-                                    onClick={() => handleDeleteGuest(guest, index)}
-                                  >
-                                    Delete guest
-                                  </button>
-                                  <div className="px-4 py-2 text-xs text-slate-400">More options coming soon</div>
-                                </div>
-                              ) : null}
+                              <button
+                                type="button"
+                                className="text-slate-400 hover:text-white"
+                                onClick={cancelEdit}
+                              >
+                                Cancel
+                              </button>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        ) : (
+                          <div className="grid sm:grid-cols-4 gap-3 text-sm items-center">
+                            <div>
+                              {guest.firstName || guest.lastName
+                                ? `${guest.firstName ?? ""} ${guest.lastName ?? ""}`.trim()
+                                : guest.name || "Unnamed"}
+                            </div>
+                            <div className="text-slate-400">
+                              {guest.phone || "No phone"}
+                            </div>
+                            <div className="text-slate-400">
+                              {guest.email || "No email"}
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-xs text-slate-500">
+                                {guest.status ?? "invited"}{" "}
+                                {guest.checkedIn
+                                  ? `· Checked-in (${guest.checkInCount ?? 0}/${maxScansLabel})`
+                                  : ""}
+                              </div>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  className="px-2 py-1 rounded-full border border-slate-200 text-slate-600 hover:text-slate-900"
+                                  onClick={() =>
+                                    setMenuOpenId((prev) =>
+                                      prev === guest.id
+                                        ? null
+                                        : (guest.id ?? null),
+                                    )
+                                  }
+                                >
+                                  ⋮
+                                </button>
+                                {menuOpenId === guest.id ? (
+                                  <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg text-sm z-10">
+                                    {!isPending ? (
+                                      <button
+                                        type="button"
+                                        className="w-full text-left px-4 py-2 hover:bg-slate-50"
+                                        onClick={() =>
+                                          openInviteModal("single", {
+                                            name: guest.name,
+                                            phone: guest.phone,
+                                            email: guest.email,
+                                          })
+                                        }
+                                      >
+                                        Invite guest
+                                      </button>
+                                    ) : null}
+                                    {!isPending ? (
+                                      <button
+                                        type="button"
+                                        className="w-full text-left px-4 py-2 hover:bg-slate-50"
+                                        onClick={() => openGuestCard(guest)}
+                                      >
+                                        View guest image card
+                                      </button>
+                                    ) : null}
+                                    {!isPending ? (
+                                      <button
+                                        type="button"
+                                        className="w-full text-left px-4 py-2 hover:bg-slate-50"
+                                        onClick={() => startEdit(guest)}
+                                      >
+                                        Edit guest
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-500"
+                                      onClick={() =>
+                                        handleDeleteGuest(guest, index)
+                                      }
+                                    >
+                                      Delete guest
+                                    </button>
+                                    <div className="px-4 py-2 text-xs text-slate-400">
+                                      More options coming soon
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </>
               )}
             </div>
@@ -867,7 +1037,9 @@ export default function EventDashboardPage() {
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
             <h2 className="text-lg font-bold mb-4">Import tips</h2>
             <div className="space-y-3 text-sm text-slate-600">
-              <div>CSV columns supported: firstName, lastName, phone, email</div>
+              <div>
+                CSV columns supported: firstName, lastName, phone, email
+              </div>
               <div>Header row is optional.</div>
               <div>PDF import is not available yet.</div>
             </div>
@@ -893,41 +1065,65 @@ export default function EventDashboardPage() {
               />
               <motion.section
                 initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: easeOut } }}
-                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.2 } }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { duration: 0.3, ease: easeOut },
+                }}
+                exit={{
+                  opacity: 0,
+                  y: 10,
+                  scale: 0.98,
+                  transition: { duration: 0.2 },
+                }}
                 className="relative z-10 w-full max-w-[680px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl"
               >
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
                     <h2 className="text-lg font-bold mb-1">
-                      {inviteMode === 'single' ? 'Invite guest via WhatsApp' : 'Invite all guests via WhatsApp'}
+                      {inviteMode === "single"
+                        ? "Invite guest via WhatsApp"
+                        : "Invite all guests via WhatsApp"}
                     </h2>
                     <p className="text-sm text-slate-600">
-                      {inviteMode === 'single'
-                        ? `Sending to ${inviteTarget?.name ?? ''} (${inviteTarget?.phone ?? ''})`
+                      {inviteMode === "single"
+                        ? `Sending to ${inviteTarget?.name ?? ""} (${inviteTarget?.phone ?? ""})`
                         : `Sending to ${guests.length} saved guests`}
                     </p>
                   </div>
-                  <button type="button" className="text-sm text-slate-500 hover:text-slate-900" onClick={closeInviteModal}>
+                  <button
+                    type="button"
+                    className="text-sm text-slate-500 hover:text-slate-900"
+                    onClick={closeInviteModal}
+                  >
                     Close
                   </button>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs uppercase tracking-widest text-slate-500">Message</label>
+                    <label className="text-xs uppercase tracking-widest text-slate-500">
+                      Message
+                    </label>
                     <textarea
                       className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm min-h-[120px]"
                       value={inviteMessage}
                       onChange={(event) => setInviteMessage(event.target.value)}
                     />
                   </div>
-                  {inviteMode === 'single' ? (
+                  {inviteMode === "single" ? (
                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                      <div className="text-xs text-slate-500 mb-2">Invite link</div>
-                      <div className="text-sm text-blue-400">{inviteLink || 'Link will appear after send.'}</div>
+                      <div className="text-xs text-slate-500 mb-2">
+                        Invite link
+                      </div>
+                      <div className="text-sm text-blue-400">
+                        {inviteLink || "Link will appear after send."}
+                      </div>
                       <div className="mt-4">
-                        <div className="text-xs text-slate-500 mb-2">Preview image</div>
+                        <div className="text-xs text-slate-500 mb-2">
+                          Preview image
+                        </div>
                         <div className="relative w-full h-48 rounded-xl border border-slate-200 overflow-hidden bg-white">
                           {eventData?.imageDataUrl ? (
                             <img
@@ -946,7 +1142,7 @@ export default function EventDashboardPage() {
                               style={{
                                 left: `${(eventData?.qrX ?? 0.1) * 100}%`,
                                 top: `${(eventData?.qrY ?? 0.1) * 100}%`,
-                                transform: 'translate(-50%, -50%)',
+                                transform: "translate(-50%, -50%)",
                                 width: eventData?.qrSize ?? 96,
                                 height: eventData?.qrSize ?? 96,
                               }}
@@ -955,10 +1151,12 @@ export default function EventDashboardPage() {
                                 alt="QR code"
                                 className="w-full h-full object-cover rounded-xl border border-slate-200 bg-white"
                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                                  `${inviteTarget?.name ?? ''}|${params.org}/${params.event}`
+                                  `${inviteTarget?.name ?? ""}|${params.org}/${params.event}`,
                                 )}`}
                                 onError={(event) => {
-                                  (event.currentTarget as HTMLImageElement).style.display = 'none';
+                                  (
+                                    event.currentTarget as HTMLImageElement
+                                  ).style.display = "none";
                                 }}
                               />
                             </div>
@@ -969,31 +1167,36 @@ export default function EventDashboardPage() {
                           )}
                           <div
                             className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow text-sm font-semibold ${
-                              eventData?.nameBg === false ? 'bg-transparent border-transparent shadow-none' : 'bg-white/90'
+                              eventData?.nameBg === false
+                                ? "bg-transparent border-transparent shadow-none"
+                                : "bg-white/90"
                             }`}
                             style={{
                               left: `${(eventData?.nameX ?? 0.1) * 100}%`,
                               top: `${(eventData?.nameY ?? 0.3) * 100}%`,
-                              transform: 'translate(-50%, -50%)',
-                              color: eventData?.nameColor ?? '#111827',
+                              transform: "translate(-50%, -50%)",
+                              color: eventData?.nameColor ?? "#111827",
                               fontSize: `${eventData?.nameSize ?? 16}px`,
-                              fontFamily: eventData?.nameFont ?? 'Arial, sans-serif',
+                              fontFamily:
+                                eventData?.nameFont ?? "Arial, sans-serif",
                             }}
                           >
-                            {inviteTarget?.name ?? 'Guest'}
+                            {inviteTarget?.name ?? "Guest"}
                           </div>
                         </div>
                       </div>
                     </div>
                   ) : null}
-                  {inviteStatus ? <div className="text-sm text-slate-400">{inviteStatus}</div> : null}
+                  {inviteStatus ? (
+                    <div className="text-sm text-slate-400">{inviteStatus}</div>
+                  ) : null}
                   <button
                     type="button"
                     className="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-semibold"
                     onClick={handleSendInvites}
                     disabled={inviteLoading}
                   >
-                    {inviteLoading ? 'Sending...' : 'Send WhatsApp invite'}
+                    {inviteLoading ? "Sending..." : "Send WhatsApp invite"}
                   </button>
                 </div>
               </motion.section>
@@ -1020,25 +1223,43 @@ export default function EventDashboardPage() {
               />
               <motion.section
                 initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: easeOut } }}
-                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.2 } }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { duration: 0.3, ease: easeOut },
+                }}
+                exit={{
+                  opacity: 0,
+                  y: 10,
+                  scale: 0.98,
+                  transition: { duration: 0.2 },
+                }}
                 className="relative z-10 w-full max-w-[520px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl"
               >
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
                     <h2 className="text-lg font-bold mb-1">Guest image card</h2>
                     <p className="text-sm text-slate-600">
-                      {cardGuest.name} - {eventData?.name ?? ''}
+                      {cardGuest.name} - {eventData?.name ?? ""}
                     </p>
                   </div>
-                  <button type="button" className="text-sm text-slate-500 hover:text-slate-900" onClick={() => setCardOpen(false)}>
+                  <button
+                    type="button"
+                    className="text-sm text-slate-500 hover:text-slate-900"
+                    onClick={() => setCardOpen(false)}
+                  >
                     Close
                   </button>
                 </div>
                 <div className="border border-slate-200 rounded-2xl overflow-hidden">
                   <div className="relative w-full h-64 bg-slate-50">
                     {eventData?.imageDataUrl ? (
-                      <img src={eventData.imageDataUrl} alt="Guest card" className="absolute inset-0 w-full h-full object-cover" />
+                      <img
+                        src={eventData.imageDataUrl}
+                        alt="Guest card"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
                     ) : null}
                     {!isFree ? (
                       <div
@@ -1046,7 +1267,7 @@ export default function EventDashboardPage() {
                         style={{
                           left: `${(eventData?.qrX ?? 0.1) * 100}%`,
                           top: `${(eventData?.qrY ?? 0.1) * 100}%`,
-                          transform: 'translate(-50%, -50%)',
+                          transform: "translate(-50%, -50%)",
                           width: eventData?.qrSize ?? 96,
                           height: eventData?.qrSize ?? 96,
                         }}
@@ -1055,10 +1276,12 @@ export default function EventDashboardPage() {
                           alt="QR code"
                           className="w-full h-full object-cover rounded-xl border border-slate-200 bg-white"
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                            `${cardGuest.name}|${params.org}/${params.event}`
+                            `${cardGuest.name}|${params.org}/${params.event}`,
                           )}`}
                           onError={(event) => {
-                            (event.currentTarget as HTMLImageElement).style.display = 'none';
+                            (
+                              event.currentTarget as HTMLImageElement
+                            ).style.display = "none";
                           }}
                         />
                       </div>
@@ -1069,15 +1292,17 @@ export default function EventDashboardPage() {
                     )}
                     <div
                       className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow text-sm font-semibold ${
-                        eventData?.nameBg === false ? 'bg-transparent border-transparent shadow-none' : 'bg-white/90'
+                        eventData?.nameBg === false
+                          ? "bg-transparent border-transparent shadow-none"
+                          : "bg-white/90"
                       }`}
                       style={{
                         left: `${(eventData?.nameX ?? 0.1) * 100}%`,
                         top: `${(eventData?.nameY ?? 0.3) * 100}%`,
-                        transform: 'translate(-50%, -50%)',
-                        color: eventData?.nameColor ?? '#111827',
+                        transform: "translate(-50%, -50%)",
+                        color: eventData?.nameColor ?? "#111827",
                         fontSize: `${eventData?.nameSize ?? 16}px`,
-                        fontFamily: eventData?.nameFont ?? 'Arial, sans-serif',
+                        fontFamily: eventData?.nameFont ?? "Arial, sans-serif",
                       }}
                     >
                       {cardGuest.name}
@@ -1115,7 +1340,8 @@ export default function EventDashboardPage() {
               >
                 <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
                 <p className="text-sm text-slate-600 mb-4">
-                  QR scanning is disabled in free mode. Upgrade to unlock QR check-in and smart invitations.
+                  QR scanning is disabled in free mode. Upgrade to unlock QR
+                  check-in and smart invitations.
                 </p>
                 <div className="flex items-center gap-3">
                   <button
@@ -1158,7 +1384,8 @@ export default function EventDashboardPage() {
               >
                 <h3 className="text-lg font-bold mb-2">Organization blocked</h3>
                 <p className="text-sm text-slate-600 mb-4">
-                  This organization has been blocked by an administrator. You will be redirected.
+                  This organization has been blocked by an administrator. You
+                  will be redirected.
                 </p>
                 <button
                   type="button"

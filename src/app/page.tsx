@@ -182,9 +182,9 @@ const FixedLandingPage = () => {
           whileInView="show"
           viewport={{ once: true, amount: 0.2 }}
           variants={stagger}
-          className="py-24 grid lg:grid-cols-[1.1fr,0.9fr] gap-12 items-center"
+          className="py-24"
         >
-          <motion.div variants={fadeUp}>
+          <motion.div variants={fadeUp} className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-600">
               Benefits
             </div>
@@ -245,35 +245,6 @@ const FixedLandingPage = () => {
               </Link>
             </div>
           </motion.div>
-          <motion.div variants={fadeUp} className="relative">
-            <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-[2rem]" />
-            <div className="relative grid gap-4">
-              <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-lg">
-                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
-                  Field team at work
-                </div>
-                <div className="h-48 rounded-2xl overflow-hidden border border-slate-200">
-                  <img
-                    src="/accessproimages/InShot_20251230_130633031.jpg.jpeg"
-                    alt="AccessPro Innovation team using event tools"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-lg">
-                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
-                  Check-in moment
-                </div>
-                <div className="h-48 rounded-2xl overflow-hidden border border-slate-200">
-                  <img
-                    src="/accessproimages/InShot_20251230_132833056.jpg.jpeg"
-                    alt="Guest check-in flow using AccessPro Innovation"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </motion.section>
 
         {/* Social proof */}
@@ -290,7 +261,7 @@ const FixedLandingPage = () => {
             </div>
           </motion.div>
           <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {["NOVA", "SummitX", "Pulse", "Lumen", "Stageworks"].map((logo) => (
+            {["Bankysu Events", "Bee Events", "Eventgo2guys", "Coaker Creative"].map((logo) => (
               <div
                 key={logo}
                 className="h-12 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-sm font-semibold text-slate-500"
@@ -369,6 +340,9 @@ const FixedLandingPage = () => {
               "/accessproimages/InShot_20251230_130942088.jpg.jpeg",
               "/accessproimages/InShot_20251230_132657935.jpg.jpeg",
               "/accessproimages/InShot_20251230_133132783.jpg.jpeg",
+              "/accessproimages/InShot_20251230_133326045.jpg.jpeg",
+              "/accessproimages/InShot_20251230_133529787.jpg.jpeg",
+              "/accessproimages/InShot_20251230_130633031.jpg.jpeg",
             ].map((src) => (
               <div
                 key={src}
@@ -377,6 +351,14 @@ const FixedLandingPage = () => {
                 <img src={src} alt="AccessPro Innovation field team" className="w-full h-full object-cover" />
               </div>
             ))}
+          </motion.div>
+          <motion.div variants={fadeUp} className="mt-6 text-center">
+            <Link
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-slate-300 text-slate-900 font-semibold"
+              href="/gallery"
+            >
+              View full gallery <ArrowRight size={14} />
+            </Link>
           </motion.div>
         </motion.section>
 
