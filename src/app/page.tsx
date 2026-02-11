@@ -58,27 +58,21 @@ const FixedLandingPage = () => {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
             <Link
               className="hover:text-white transition-colors"
-              href="/features"
+              href="#benefits"
             >
-              Features
+              Benefits
             </Link>
             <Link
               className="hover:text-white transition-colors"
-              href="/workflow"
+              href="#success"
             >
-              Workflow
+              Success Stories
             </Link>
             <Link
               className="hover:text-white transition-colors"
-              href="/pricing"
+              href="#pricing"
             >
               Pricing
-            </Link>
-            <Link
-              className="hover:text-white transition-colors"
-              href="/security"
-            >
-              Security
             </Link>
             <Link
               className="hover:text-white transition-colors"
@@ -178,6 +172,306 @@ const FixedLandingPage = () => {
                 )}
               </div>
             </div>
+          </motion.div>
+        </motion.section>
+
+        {/* Benefits + Visuals */}
+        <motion.section
+          id="benefits"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="py-24 grid lg:grid-cols-[1.1fr,0.9fr] gap-12 items-center"
+        >
+          <motion.div variants={fadeUp}>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-600">
+              Benefits
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold mt-4 mb-4">
+              Faster check-in, calmer queues, happier guests.
+            </h2>
+            <p className="text-slate-600 mb-8">
+              AccessPro Innovation centralizes invitations, scanning, and live
+              analytics so your team can focus on the guest experience.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {[
+                {
+                  title: "Instant QR passes",
+                  desc: "Generate and distribute QR codes in seconds.",
+                  icon: <QrCode size={18} className="text-blue-600" />,
+                },
+                {
+                  title: "Live attendance",
+                  desc: "See who is inside, pending, or arriving.",
+                  icon: <BarChart3 size={18} className="text-blue-600" />,
+                },
+                {
+                  title: "No spreadsheet chaos",
+                  desc: "Clean, real-time guest list management.",
+                  icon: <Zap size={18} className="text-blue-600" />,
+                },
+                {
+                  title: "On-site confidence",
+                  desc: "Staff get a clear, guided scan flow.",
+                  icon: <ScanLine size={18} className="text-blue-600" />,
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+                    {item.icon}
+                  </div>
+                  <div className="font-semibold mb-1">{item.title}</div>
+                  <div className="text-sm text-slate-500">{item.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Link
+                className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-semibold"
+                href="/sign-in"
+              >
+                Start Free Trial
+              </Link>
+              <Link
+                className="px-6 py-3 rounded-2xl border border-slate-300 text-slate-900 font-semibold"
+                href="/contact"
+              >
+                Book a demo
+              </Link>
+            </div>
+          </motion.div>
+          <motion.div variants={fadeUp} className="relative">
+            <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-[2rem]" />
+            <div className="relative grid gap-4">
+              <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-lg">
+                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
+                  Field team at work
+                </div>
+                <div className="h-48 rounded-2xl overflow-hidden border border-slate-200">
+                  <img
+                    src="/accessproimages/InShot_20251230_130633031.jpg.jpeg"
+                    alt="AccessPro Innovation team using event tools"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-[2rem] p-4 shadow-lg">
+                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
+                  Check-in moment
+                </div>
+                <div className="h-48 rounded-2xl overflow-hidden border border-slate-200">
+                  <img
+                    src="/accessproimages/InShot_20251230_132833056.jpg.jpeg"
+                    alt="Guest check-in flow using AccessPro Innovation"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.section>
+
+        {/* Social proof */}
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="py-16"
+        >
+          <motion.div variants={fadeUp} className="text-center mb-10">
+            <div className="text-xs uppercase tracking-widest text-slate-500">
+              Trusted by teams who run high‑stakes events
+            </div>
+          </motion.div>
+          <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {["NOVA", "SummitX", "Pulse", "Lumen", "Stageworks"].map((logo) => (
+              <div
+                key={logo}
+                className="h-12 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-sm font-semibold text-slate-500"
+              >
+                {logo}
+              </div>
+            ))}
+          </motion.div>
+        </motion.section>
+
+        {/* Testimonials */}
+        <motion.section
+          id="success"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="py-20"
+        >
+          <motion.div variants={fadeUp} className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-3">
+              Success stories from real event teams
+            </h2>
+            <p className="text-slate-600">
+              Less friction, more control, and happier guests.
+            </p>
+          </motion.div>
+          <motion.div variants={stagger} className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                quote:
+                  "We cut check‑in time by 60% and finally had a live view of arrivals.",
+                name: "Amina O.",
+                role: "Event Director, Pulse Summit",
+              },
+              {
+                quote:
+                  "The QR workflow is clean and staff onboarding takes minutes.",
+                name: "Jason K.",
+                role: "Ops Lead, Nova Expo",
+              },
+              {
+                quote:
+                  "Our VIP lanes stayed smooth all night. The analytics helped us plan the next event.",
+                name: "Tola A.",
+                role: "Producer, Lumen Nights",
+              },
+            ].map((item) => (
+              <div
+                key={item.name}
+                className="p-6 rounded-3xl border border-slate-200 bg-white shadow-sm"
+              >
+                <p className="text-sm text-slate-600 mb-4">“{item.quote}”</p>
+                <div className="text-sm font-semibold">{item.name}</div>
+                <div className="text-xs text-slate-500">{item.role}</div>
+              </div>
+            ))}
+          </motion.div>
+        </motion.section>
+
+        {/* Field gallery */}
+        <motion.section
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="py-12"
+        >
+          <motion.div variants={fadeUp} className="text-center mb-8">
+            <div className="text-xs uppercase tracking-widest text-slate-500">
+              In the field
+            </div>
+          </motion.div>
+          <motion.div variants={fadeUp} className="grid md:grid-cols-3 gap-4">
+            {[
+              "/accessproimages/InShot_20251230_130942088.jpg.jpeg",
+              "/accessproimages/InShot_20251230_132657935.jpg.jpeg",
+              "/accessproimages/InShot_20251230_133132783.jpg.jpeg",
+            ].map((src) => (
+              <div
+                key={src}
+                className="h-64 rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-sm"
+              >
+                <img src={src} alt="AccessPro Innovation field team" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </motion.div>
+        </motion.section>
+
+        {/* Pricing */}
+        <motion.section
+          id="pricing"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={stagger}
+          className="py-20"
+        >
+          <motion.div variants={fadeUp} className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-3">
+              Transparent pricing for every team size
+            </h2>
+            <p className="text-slate-600">
+              Start free and scale when your events grow.
+            </p>
+          </motion.div>
+          <motion.div variants={stagger} className="grid lg:grid-cols-3 gap-6">
+            {[
+              {
+                title: "Starter",
+                price: "Free",
+                desc: "For pilots and small meetups",
+                features: [
+                  "Up to 300 guests",
+                  "Single event workspace",
+                  "Basic analytics",
+                  "Email support",
+                ],
+              },
+              {
+                title: "Growth",
+                price: "$249 / mo",
+                desc: "For recurring events",
+                features: [
+                  "Up to 5,000 guests",
+                  "Multi-lane scanning",
+                  "Automations & reminders",
+                  "CSV exports",
+                ],
+                highlight: true,
+              },
+              {
+                title: "Enterprise",
+                price: "Custom",
+                desc: "For high-volume teams",
+                features: [
+                  "Unlimited guests",
+                  "Dedicated success team",
+                  "SSO & security reviews",
+                  "SLA support",
+                ],
+              },
+            ].map((tier) => (
+              <div
+                key={tier.title}
+                className={`p-7 rounded-3xl border ${
+                  tier.highlight
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-white border-slate-200"
+                } shadow-sm`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-lg font-bold">{tier.title}</div>
+                  {tier.highlight ? (
+                    <span className="text-[10px] uppercase tracking-widest font-black text-blue-400 bg-blue-500/15 px-2 py-1 rounded-md">
+                      Most popular
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-3xl font-black mb-2">{tier.price}</div>
+                <p className="text-sm text-slate-600 mb-4">{tier.desc}</p>
+                <div className="space-y-2 text-sm text-slate-600">
+                  {tier.features.map((feature) => (
+                    <div key={feature} className="flex items-center gap-2">
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      {feature}
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  className={`mt-5 inline-flex w-full items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold ${
+                    tier.highlight
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-900 text-white"
+                  }`}
+                  href="/contact"
+                >
+                  Talk to sales <ArrowRight size={14} />
+                </Link>
+              </div>
+            ))}
           </motion.div>
         </motion.section>
 
@@ -564,9 +858,6 @@ const FixedLandingPage = () => {
           </div>
         </motion.section>
 
-        <footer className="py-10 border-t border-slate-200 text-center text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-          &copy; 2026 AccessPro Innovation. All Rights Reserved.
-        </footer>
       </div>
     </div>
   );

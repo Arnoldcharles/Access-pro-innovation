@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AccessPro Innovation",
   description: "AccessPro Innovation — event check-in reimagined.",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -28,68 +32,117 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
-        <footer className="mt-16 border-t border-slate-200 bg-gradient-to-b from-white to-slate-50 text-slate-600">
+        <footer className="mt-16 border-t border-slate-200 bg-white text-slate-600">
           <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-lg font-black text-slate-900">
-                    AccessPro Innovation
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Event check-in reimagined.
-                  </div>
+            <div className="grid gap-10 md:grid-cols-[1.2fr,1fr,0.9fr,1fr]">
+              <div>
+                <div className="text-lg font-black text-slate-900">
+                  AccessPro Innovation
                 </div>
-                <div className="flex items-center gap-3">
-                  <a
-                    className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition"
-                    href="https://facebook.com"
-                    aria-label="Facebook"
-                  >
-                    f
-                  </a>
-                  <a
-                    className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition"
-                    href="https://instagram.com"
-                    aria-label="Instagram"
-                  >
-                    i
-                  </a>
+                <div className="text-sm text-slate-500 mt-2">
+                  Premium event check-in, guest flow, and on-site analytics for
+                  modern organizers.
                 </div>
               </div>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">
-                    Quick Links
-                  </div>
-                  <nav className="flex flex-wrap items-center gap-3 text-sm">
-                    <a className="hover:text-slate-900" href="/">
-                      Home
-                    </a>
-                    <span className="text-slate-300">|</span>
-                    <a className="hover:text-slate-900" href="/features"> 
-                      Benefits
-                    </a>
-                    <span className="text-slate-300">|</span>
-                    <a className="hover:text-slate-900" href="/pricing">
-                      Pricing
-                    </a>
-                    <span className="text-slate-300">|</span>
-                    <a className="hover:text-slate-900" href="/workflow">
-                      Success Stories
-                    </a>
-                    <span className="text-slate-300">|</span>
-                    <a className="hover:text-slate-900" href="/contact">
-                      Contact
-                    </a>
-                  </nav>
+              <div>
+                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
+                  Quick Links
                 </div>
-                <div className="text-sm">
+                <nav className="grid grid-cols-2 gap-2 text-sm">
+                  <a className="hover:text-slate-900" href="/">
+                    Home
+                  </a>
+                  <a className="hover:text-slate-900" href="/features">
+                    Benefits
+                  </a>
+                  <a className="hover:text-slate-900" href="/pricing">
+                    Pricing
+                  </a>
+                  <a className="hover:text-slate-900" href="/workflow">
+                    Success Stories
+                  </a>
+                  <a className="hover:text-slate-900" href="/contact">
+                    Contact
+                  </a>
                   <a className="hover:text-slate-900" href="/terms">
                     Terms &amp; Conditions
                   </a>
+                  <a className="hover:text-slate-900" href="/privacy">
+                    Privacy Policy
+                  </a>
+                </nav>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
+                  Social
+                </div>
+                <div className="flex items-center gap-3">
+                  <a
+                    className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition"
+                    href="https://facebook.com"
+                    aria-label="Facebook"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                      className="text-slate-700"
+                      fill="currentColor"
+                    >
+                      <path d="M13.5 9.5h3V6.2c0-.3-.2-.6-.6-.7-1.2-.2-2.4-.3-3.4-.3-3.3 0-5.5 2-5.5 5.6v2.7H4.6c-.3 0-.6.3-.6.6v3c0 .3.3.6.6.6H7v6.8c0 .3.2.5.5.5h3.4c.3 0 .5-.2.5-.5v-6.8h2.9c.3 0 .6-.2.6-.6l.4-3c0-.4-.2-.7-.6-.7h-3.3V11c0-1 .5-1.5 2.1-1.5z" />
+                    </svg>
+                  </a>
+                  <a
+                    className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition"
+                    href="https://instagram.com"
+                    aria-label="Instagram"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                      className="text-slate-700"
+                      fill="currentColor"
+                    >
+                      <path d="M7.2 3.5h9.6c2 0 3.7 1.6 3.7 3.7v9.6c0 2-1.6 3.7-3.7 3.7H7.2c-2 0-3.7-1.6-3.7-3.7V7.2c0-2 1.6-3.7 3.7-3.7zm0 1.8c-1 0-1.8.8-1.8 1.8v9.6c0 1 .8 1.8 1.8 1.8h9.6c1 0 1.8-.8 1.8-1.8V7.2c0-1-.8-1.8-1.8-1.8H7.2zm4.8 3.1a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2zm0 1.8a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zm5.6-3.5a1 1 0 1 1 0 2.1 1 1 0 0 1 0-2.1z" />
+                    </svg>
+                  </a>
                 </div>
               </div>
+              <div>
+                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
+                  Contact
+                </div>
+                <div className="text-sm text-slate-600 space-y-2">
+                  <div>accessproinnovation@gmail.com</div>
+                  <div>+234 81 3368 9639</div>
+                  <div>12, Ogunbekun Street, Ladilak, Lagos</div>
+                </div>
+                <div className="mt-4">
+                  <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">
+                    Newsletter
+                  </div>
+                  <form className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                      placeholder="Email address"
+                      type="email"
+                    />
+                    <button
+                      type="button"
+                      className="rounded-xl bg-slate-900 text-white text-sm px-4 py-2"
+                    >
+                      Subscribe
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div className="mt-10 pt-6 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <span>© 2026 AccessPro Innovation. All rights reserved.</span>
+              <span>Built for modern event teams.</span>
             </div>
           </div>
         </footer>

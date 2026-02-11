@@ -69,7 +69,7 @@ export default function ContactPage() {
             Contact
           </div>
           <h1 className="text-4xl md:text-6xl font-black leading-tight">
-            Letâ€™s plan your next event together.
+            Let's plan your next event together.
           </h1>
           <p className="text-slate-600 mt-4 max-w-2xl text-lg leading-relaxed">
             Tell us about your event size, timeline, and goals. Weâ€™ll map out
@@ -118,7 +118,7 @@ export default function ContactPage() {
             {[
               {
                 label: "Email",
-                value: "AccessPro Innovationinnovation@gmail.com",
+                value: "accessproinnovation@gmail.com",
                 icon: <Mail size={18} />,
               },
               {
