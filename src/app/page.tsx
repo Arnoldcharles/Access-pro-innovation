@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import MarketingNav from "../components/MarketingNav";
 import {
   QrCode,
   Zap,
@@ -37,57 +38,7 @@ const FixedLandingPage = () => {
     */
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased overflow-x-hidden">
       <div className="max-w-[1300px] mx-auto px-6 sm:px-10 lg:px-16">
-        {/* Navigation - Added top margin so it doesn't touch the top browser bar */}
-        <motion.nav
-          initial="hidden"
-          animate="show"
-          variants={fadeUp}
-          className="flex items-center justify-between py-10"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
-              A
-            </div>
-            <span className="font-bold text-xl tracking-tight">
-              AccessPro Innovation{" "}
-              <span className="text-blue-600 text-[10px] ml-1 uppercase">
-                Beta
-              </span>
-            </span>
-          </div>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <Link
-              className="hover:text-white transition-colors"
-              href="#benefits"
-            >
-              Benefits
-            </Link>
-            <Link
-              className="hover:text-white transition-colors"
-              href="#success"
-            >
-              Success Stories
-            </Link>
-            <Link
-              className="hover:text-white transition-colors"
-              href="#pricing"
-            >
-              Pricing
-            </Link>
-            <Link
-              className="hover:text-white transition-colors"
-              href="/contact"
-            >
-              Contact
-            </Link>
-          </div>
-          <Link
-            className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-            href="/sign-in"
-          >
-            Sign In
-          </Link>
-        </motion.nav>
+        <MarketingNav />
 
         {/* Hero Section */}
         <motion.section
@@ -352,14 +303,14 @@ const FixedLandingPage = () => {
               </div>
             ))}
           </motion.div>
-          {/*<motion.div variants={fadeUp} className="mt-6 text-center">
+          <motion.div variants={fadeUp} className="mt-6 text-center">
             <Link
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-slate-300 text-slate-900 font-semibold"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-slate-300 text-slate-900 font-semibold hover:border-slate-400"
               href="/gallery"
             >
               View full gallery <ArrowRight size={14} />
             </Link>
-          </motion.div>*/}
+          </motion.div>
         </motion.section>
 
         {/* Pricing */}
