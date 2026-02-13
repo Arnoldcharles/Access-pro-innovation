@@ -72,6 +72,7 @@ export default function OrgDashboardPage() {
   const [introOpen, setIntroOpen] = useState(false);
   const [introCanSkip, setIntroCanSkip] = useState(false);
   const introTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const introAnimationMs = 12000;
   const closeIntro = () => {
     setIntroOpen(false);
     if (introTimerRef.current) {
@@ -139,7 +140,7 @@ export default function OrgDashboardPage() {
           introTimerRef.current = setTimeout(() => {
             setIntroOpen(false);
             introTimerRef.current = null;
-          }, 90000);
+          }, introAnimationMs);
         } else {
           setIntroCanSkip(false);
           setIntroOpen(false);
@@ -796,7 +797,7 @@ export default function OrgDashboardPage() {
                     strokeWidth="2"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.9, ease: "easeOut" }}
+                    transition={{ duration: 8, ease: "easeInOut" }}
                   />
                   <motion.path
                     d="M36 74C36 59 47 48 60 48C73 48 84 59 84 74"
@@ -805,7 +806,7 @@ export default function OrgDashboardPage() {
                     strokeLinecap="round"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 1, ease: "easeOut", delay: 0.15 }}
+                    transition={{ duration: 9.5, ease: "easeInOut", delay: 0.8 }}
                   />
                   <motion.path
                     d="M48 49C48 42 53 37 60 37C67 37 72 42 72 49C72 56 67 61 60 61C53 61 48 56 48 49Z"
@@ -815,7 +816,11 @@ export default function OrgDashboardPage() {
                     strokeLinejoin="round"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.05, ease: "easeOut", delay: 0.25 }}
+                    transition={{
+                      duration: 9,
+                      ease: "easeInOut",
+                      delay: 1.4,
+                    }}
                   />
                   <motion.path
                     d="M27 83H93"
@@ -824,7 +829,7 @@ export default function OrgDashboardPage() {
                     strokeLinecap="round"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.5, ease: "easeOut", delay: 0.8 }}
+                    transition={{ duration: 6.5, ease: "easeInOut", delay: 3.2 }}
                   />
                 </svg>
               </motion.div>
