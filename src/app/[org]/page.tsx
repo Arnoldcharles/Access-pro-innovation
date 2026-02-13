@@ -70,7 +70,15 @@ export default function OrgDashboardPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
+  const [introCanSkip, setIntroCanSkip] = useState(false);
   const introTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeIntro = () => {
+    setIntroOpen(false);
+    if (introTimerRef.current) {
+      clearTimeout(introTimerRef.current);
+      introTimerRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -120,15 +128,20 @@ export default function OrgDashboardPage() {
       setOrgPlan(orgData.plan === "pro" ? "pro" : "free");
       if (typeof window !== "undefined") {
         const introKey = `ap:intro:${firebaseUser.uid}:${slug}`;
+        const introEverKey = `ap:intro-ever:${firebaseUser.uid}:${slug}`;
         const seenIntro = window.sessionStorage.getItem(introKey) === "1";
+        const seenEver = window.localStorage.getItem(introEverKey) === "1";
         if (!seenIntro) {
           window.sessionStorage.setItem(introKey, "1");
+          if (!seenEver) window.localStorage.setItem(introEverKey, "1");
+          setIntroCanSkip(seenEver);
           setIntroOpen(true);
           introTimerRef.current = setTimeout(() => {
             setIntroOpen(false);
             introTimerRef.current = null;
-          }, 2600);
+          }, 90000);
         } else {
+          setIntroCanSkip(false);
           setIntroOpen(false);
         }
       }
@@ -831,6 +844,15 @@ export default function OrgDashboardPage() {
               >
                 Loading events, guests, and live check-in tools.
               </motion.p>
+              {introCanSkip ? (
+                <button
+                  type="button"
+                  className="mt-6 text-xs text-slate-500 hover:text-slate-800"
+                  onClick={closeIntro}
+                >
+                  Skip
+                </button>
+              ) : null}
             </div>
           </motion.div>
         ) : null}
