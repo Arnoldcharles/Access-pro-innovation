@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-
+ 
 const MarketingNav = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const easeOut = [0.16, 1, 0.3, 1] as const;
@@ -21,17 +21,13 @@ const MarketingNav = () => {
         variants={fadeUp}
         className="flex items-center justify-between py-10"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
-            A
-          </div>
-          <span className="font-bold text-xl tracking-tight">
-            AccessPro Innovation{" "}
-            <span className="text-blue-600 text-[10px] ml-1 uppercase">
-              Beta
-            </span>
-          </span>
-        </div>
+        <Link href="/" className="inline-flex items-center">
+          <img
+            src="/accessproimages/icon.png"
+            alt="Access Pro Innovation"
+            className="h-12 w-auto object-contain"
+          />
+        </Link>
         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
           <Link
             className="hover:text-slate-900 transition-colors underline-offset-8 hover:underline"

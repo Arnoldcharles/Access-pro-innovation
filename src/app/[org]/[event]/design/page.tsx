@@ -30,6 +30,7 @@ export default function EventDesignPage() {
   const [eventLocation, setEventLocation] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string>("");
   const [qrPos, setQrPos] = useState({ x: 0.1, y: 0.1 });
+  const [qrSize, setQrSize] = useState(96);
   const [namePos, setNamePos] = useState({ x: 0.1, y: 0.3 });
   const [nameColor, setNameColor] = useState("#111827");
   const [nameSize, setNameSize] = useState(16);
@@ -58,6 +59,7 @@ export default function EventDesignPage() {
         if (data.imageDataUrl) setImageDataUrl(data.imageDataUrl);
         if (typeof data.qrX === "number" && typeof data.qrY === "number")
           setQrPos({ x: data.qrX, y: data.qrY });
+        if (typeof data.qrSize === "number") setQrSize(data.qrSize);
         if (typeof data.nameX === "number" && typeof data.nameY === "number")
           setNamePos({ x: data.nameX, y: data.nameY });
         if (data.nameColor) setNameColor(data.nameColor);
@@ -83,9 +85,22 @@ export default function EventDesignPage() {
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!dragging || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
+    if (dragging === "qr") {
+      const halfQrX = Math.min(0.48, qrSize / (2 * rect.width));
+      const halfQrY = Math.min(0.48, qrSize / (2 * rect.height));
+      const x = Math.min(
+        1 - halfQrX,
+        Math.max(halfQrX, (event.clientX - rect.left) / rect.width),
+      );
+      const y = Math.min(
+        1 - halfQrY,
+        Math.max(halfQrY, (event.clientY - rect.top) / rect.height),
+      );
+      setQrPos({ x, y });
+      return;
+    }
     const x = toPercent(event.clientX - rect.left, rect.width);
     const y = toPercent(event.clientY - rect.top, rect.height);
-    if (dragging === "qr") setQrPos({ x, y });
     if (dragging === "name") setNamePos({ x, y });
   };
 
@@ -100,6 +115,7 @@ export default function EventDesignPage() {
         imageDataUrl,
         qrX: qrPos.x,
         qrY: qrPos.y,
+        qrSize,
         nameX: namePos.x,
         nameY: namePos.y,
         nameColor,
@@ -187,7 +203,7 @@ export default function EventDesignPage() {
                 <img
                   alt="QR code"
                   className="object-cover rounded-xl"
-                  style={{ width: 96, height: 96 }}
+                  style={{ width: qrSize, height: qrSize }}
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
                     `Guest Name|${params.org}/${params.event}`,
                   )}`}
@@ -254,6 +270,19 @@ export default function EventDesignPage() {
               />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs uppercase tracking-widest text-slate-500">
+                  QR size ({qrSize}px)
+                </label>
+                <input
+                  type="range"
+                  min="72"
+                  max="220"
+                  value={qrSize}
+                  onChange={(event) => setQrSize(Number(event.target.value))}
+                  className="w-full"
+                />
+              </div>
               <div>
                 <label className="text-xs uppercase tracking-widest text-slate-500">
                   Name size

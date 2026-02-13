@@ -116,9 +116,25 @@ export default function RootLayout({
                   Contact
                 </div>
                 <div className="text-sm text-slate-600 space-y-2">
-                  <div>accessproinnovation@gmail.com</div>
-                  <div>+234 81 3368 9639</div>
-                  <div>12, Ogunbekun Street, Ladilak, Lagos</div>
+                  <a
+                    className="block hover:text-slate-900"
+                    href="https://mail.google.com/mail/?view=cm&fs=1&to=accessproinnovation@gmail.com"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    accessproinnovation@gmail.com
+                  </a>
+                  <a className="block hover:text-slate-900" href="tel:+2348133689639">
+                    +234 81 3368 9639
+                  </a>
+                  <a
+                    className="block hover:text-slate-900"
+                    href="https://maps.google.com/?q=12,+Ogunbekun+Street,+Ladilak,+Lagos"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    12, Ogunbekun Street, Ladilak, Lagos
+                  </a>
                 </div>
                 <div className="mt-4">
                   <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">

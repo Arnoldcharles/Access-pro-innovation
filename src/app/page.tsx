@@ -66,13 +66,16 @@ const FixedLandingPage = () => {
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <button className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 group">
+              <Link
+                className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 group"
+                href="/sign-in"
+              >
                 Start Free Trial{" "}
                 <ArrowRight
                   size={18}
                   className="group-hover:translate-x-1 transition-transform"
                 />
-              </button>
+              </Link>
               <Link
                 className="px-8 py-4 bg-white border border-slate-300 hover:border-slate-400 text-slate-900 font-semibold rounded-2xl transition-all"
                 href="/features"
@@ -334,7 +337,6 @@ const FixedLandingPage = () => {
             {[
               {
                 title: "Starter",
-                price: "Free",
                 desc: "For pilots and small meetups",
                 features: [
                   "Up to 300 guests",
@@ -342,10 +344,9 @@ const FixedLandingPage = () => {
                   "Basic analytics",
                   "Email support",
                 ],
-              },
+              }, 
               {
                 title: "Growth",
-                price: "$249 / mo",
                 desc: "For recurring events",
                 features: [
                   "Up to 5,000 guests",
@@ -357,7 +358,6 @@ const FixedLandingPage = () => {
               },
               {
                 title: "Enterprise",
-                price: "Custom",
                 desc: "For high-volume teams",
                 features: [
                   "Unlimited guests",
@@ -383,7 +383,6 @@ const FixedLandingPage = () => {
                     </span>
                   ) : null}
                 </div>
-                <div className="text-3xl font-black mb-2">{tier.price}</div>
                 <p className="text-sm text-slate-600 mb-4">{tier.desc}</p>
                 <div className="space-y-2 text-sm text-slate-600">
                   {tier.features.map((feature) => (
