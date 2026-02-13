@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, cubicBezier } from "framer-motion";
+import { Eye, EyeOff } from "lucide-react";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -23,6 +24,7 @@ export default function SignInPage() {
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -228,14 +230,24 @@ export default function SignInPage() {
               onChange={(event) => setEmail(event.target.value)}
               required
             />
-            <input
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-              placeholder="Password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
+            <div className="relative">
+              <input
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-11 text-sm"
+                placeholder="Password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             <motion.button
               type="submit"
               disabled={loading}
