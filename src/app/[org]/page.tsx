@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, cubicBezier } from "framer-motion";
@@ -69,6 +69,9 @@ export default function OrgDashboardPage() {
   const maxEvents = 5;
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false);
+  const introTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
@@ -115,6 +118,20 @@ export default function OrgDashboardPage() {
       const orgData = orgSnap.data() as OrgData;
       setOrg(orgData);
       setOrgPlan(orgData.plan === "pro" ? "pro" : "free");
+      if (typeof window !== "undefined") {
+        const introKey = `ap:intro:${firebaseUser.uid}:${slug}`;
+        const seenIntro = window.sessionStorage.getItem(introKey) === "1";
+        if (!seenIntro) {
+          window.sessionStorage.setItem(introKey, "1");
+          setIntroOpen(true);
+          introTimerRef.current = setTimeout(() => {
+            setIntroOpen(false);
+            introTimerRef.current = null;
+          }, 2600);
+        } else {
+          setIntroOpen(false);
+        }
+      }
 
       setLoading(false);
       setEventsLoading(true);
@@ -177,10 +194,23 @@ export default function OrgDashboardPage() {
     return () => {
       unsub();
       if (eventsUnsub) eventsUnsub();
+      if (introTimerRef.current) {
+        clearTimeout(introTimerRef.current);
+        introTimerRef.current = null;
+      }
     };
   }, [params, router]);
 
   const handleSignOut = async () => {
+    if (typeof window !== "undefined" && uid) {
+      const keyPrefix = `ap:intro:${uid}:`;
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < window.sessionStorage.length; i += 1) {
+        const key = window.sessionStorage.key(i);
+        if (key && key.startsWith(keyPrefix)) keysToRemove.push(key);
+      }
+      keysToRemove.forEach((key) => window.sessionStorage.removeItem(key));
+    }
     await signOut(auth);
     router.replace("/sign-in");
   };
@@ -724,6 +754,87 @@ export default function OrgDashboardPage() {
           </div>
         </div>
       ) : null}
+      <AnimatePresence>
+        {introOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[70] flex items-center justify-center px-6 bg-white"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.35 } }}
+          >
+            <div className="max-w-xl w-full text-center">
+              <motion.div
+                className="mx-auto mb-6 w-40 h-40"
+                initial={{ scale: 0.94, opacity: 0.75 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.45, ease: easeOut }}
+              >
+                <svg
+                  viewBox="0 0 120 120"
+                  className="w-full h-full"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <motion.circle
+                    cx="60"
+                    cy="60"
+                    r="52"
+                    stroke="#bfdbfe"
+                    strokeWidth="2"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 0.9, ease: "easeOut" }}
+                  />
+                  <motion.path
+                    d="M36 74C36 59 47 48 60 48C73 48 84 59 84 74"
+                    stroke="#2563eb"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1, ease: "easeOut", delay: 0.15 }}
+                  />
+                  <motion.path
+                    d="M48 49C48 42 53 37 60 37C67 37 72 42 72 49C72 56 67 61 60 61C53 61 48 56 48 49Z"
+                    stroke="#2563eb"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.05, ease: "easeOut", delay: 0.25 }}
+                  />
+                  <motion.path
+                    d="M27 83H93"
+                    stroke="#60a5fa"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 0.5, ease: "easeOut", delay: 0.8 }}
+                  />
+                </svg>
+              </motion.div>
+              <motion.h2
+                className="text-2xl font-black text-slate-900"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: easeOut, delay: 0.4 }}
+              >
+                Preparing your workspace
+              </motion.h2>
+              <motion.p
+                className="text-sm text-slate-600 mt-2"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: easeOut, delay: 0.5 }}
+              >
+                Loading events, guests, and live check-in tools.
+              </motion.p>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       <AnimatePresence>
         {upgradeOpen ? (
           <motion.div
