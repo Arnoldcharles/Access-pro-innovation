@@ -239,14 +239,28 @@ export default function SignInPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
               />
-              <button
+              <motion.button
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={showPassword ? "eye-off" : "eye"}
+                    initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, rotate: 12 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="inline-flex"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.button>
             </div>
             <motion.button
               type="submit"
