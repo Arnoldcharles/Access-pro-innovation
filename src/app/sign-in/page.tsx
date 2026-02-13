@@ -231,13 +231,23 @@ export default function SignInPage() {
               required
             />
             <div className="relative">
-              <input
+              <motion.input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-11 text-sm"
                 placeholder="Password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
+                animate={
+                  showPassword
+                    ? { opacity: [0.7, 1], y: [4, 0], filter: ["blur(2px)", "blur(0px)"] }
+                    : {
+                        opacity: [1, 0.82, 1],
+                        y: [0, -2, 0],
+                        filter: ["blur(0px)", "blur(1.5px)", "blur(0px)"],
+                      }
+                }
+                transition={{ duration: 0.22, ease: "easeOut" }}
               />
               <motion.button
                 type="button"
