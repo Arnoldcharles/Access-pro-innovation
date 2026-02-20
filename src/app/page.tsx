@@ -17,11 +17,10 @@ import { useState } from "react";
 
 const partnerNames = [
   "Bankysu Events",
-  "EventRite",
-  "Africa Innovators",
-  "Pulse Live",
-  "Nova Teams",
-  "Lumen Hub",
+  "Eventgo2guys",
+  "Creative work Flow (CWF)",
+  "Coker Creative",
+  "Bee Events",
 ];
 
 const tools = [
