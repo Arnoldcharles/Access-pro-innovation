@@ -77,7 +77,7 @@ export default function HomePage() {
           <div className="rounded-full border border-white/20 bg-white/10 px-4 py-3 backdrop-blur md:px-6">
             <div className="flex items-center justify-between">
               <Link href="/" className="text-sm font-black tracking-[0.2em] text-white">
-                TEPS
+                ACCESS PRO
               </Link>
               <nav className="hidden items-center gap-6 text-sm font-medium text-white/85 md:flex">
                 <Link href="/features">Features</Link>
@@ -185,12 +185,12 @@ export default function HomePage() {
 
       <section className="px-4 py-16 sm:px-8">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-500">About TEPS</p>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-500">About Access Pro</p>
           <h2 className="mt-4 text-3xl font-black leading-tight sm:text-4xl">
             More than just software. We are innovators with years of experience.
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
-            TEPS gives teams one connected system for invitations, attendance tracking, and day-of-event execution.
+            Access Pro gives teams one connected system for invitations, attendance tracking, and day-of-event execution.
             Build better events with fast setup and smooth on-site operations.
           </p>
         </div>
@@ -227,7 +227,7 @@ export default function HomePage() {
           <div className="rounded-2xl bg-white p-6 md:col-span-2">
             <h3 className="text-xl font-black">Versatile. Built for any event.</h3>
             <p className="mt-2 text-sm text-slate-600">
-              Whether you run invite-only forums or public experiences, TEPS scales cleanly and keeps your team in sync.
+              Whether you run invite-only forums or public experiences, Access Pro scales cleanly and keeps your team in sync.
             </p>
           </div>
         </div>
@@ -304,7 +304,7 @@ export default function HomePage() {
       <section className="bg-[#121e4c] px-4 py-16 text-white sm:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">Contact Us Today</p>
-          <h2 className="mt-4 text-3xl font-black sm:text-4xl">Curious if TEPS is right for your event?</h2>
+          <h2 className="mt-4 text-3xl font-black sm:text-4xl">Curious if Access Pro is right for your event?</h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-white/80 sm:text-base">
             Speak with our team to discuss your event type, attendee volume, and workflow goals.
           </p>
@@ -331,56 +331,21 @@ export default function HomePage() {
           </div>
           <div className="space-y-3">
             {[
-              "What event types can I manage with TEPS?",
-              "How does TEPS handle attendee verification?",
-              "Can I use TEPS for multi-day events?",
+              "What event types can I manage with Access Pro?",
+              "How does Access Pro handle attendee verification?",
+              "Can I use Access Pro for multi-day events?",
               "How secure is attendee data on the platform?",
             ].map((q) => (
               <details key={q} className="rounded-xl border border-slate-200 px-4 py-3">
                 <summary className="cursor-pointer text-sm font-semibold text-slate-800">{q}</summary>
                 <p className="mt-2 text-sm text-slate-600">
-                  TEPS is designed for flexible events, with configurable flows for registration, check-in, and reporting.
+                  Access Pro is designed for flexible events, with configurable flows for registration, check-in, and reporting.
                 </p>
               </details>
             ))}
           </div>
         </div>
       </section>
-
-      <footer className="bg-[#0d1433] px-4 py-10 text-white sm:px-8">
-        <div className="mx-auto grid max-w-6xl gap-8 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <h3 className="text-base font-bold">About Platform</h3>
-            <p className="mt-3 text-white/75">
-              TEPS helps teams run smooth events through fast setup, reliable check-ins, and clear post-event insights.
-            </p>
-          </div>
-          <div>
-            <h3 className="text-base font-bold">Platform</h3>
-            <div className="mt-3 grid gap-2 text-white/80">
-              <Link href="/features">Features</Link>
-              <Link href="/benefits">Benefits</Link>
-              <Link href="/pricing">Pricing</Link>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-base font-bold">Resources</h3>
-            <div className="mt-3 grid gap-2 text-white/80">
-              <Link href="/workflow">Workflow</Link>
-              <Link href="/security">Security</Link>
-              <Link href="/gallery">Gallery</Link>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-base font-bold">Contact</h3>
-            <div className="mt-3 grid gap-2 text-white/80">
-              <Link href="/contact">Contact us</Link>
-              <Link href="/privacy">Privacy</Link>
-              <Link href="/terms">Terms</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }
