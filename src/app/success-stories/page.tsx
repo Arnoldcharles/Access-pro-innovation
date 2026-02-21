@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import MarketingNav from "../../components/MarketingNav";
 
 const SuccessStoriesPage = () => {
   const fadeUp = {
@@ -14,7 +13,6 @@ const SuccessStoriesPage = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <div className="max-w-[1100px] mx-auto px-6 sm:px-10 lg:px-16 pb-16">
-        <MarketingNav />
         <motion.div initial="hidden" animate="show" variants={fadeUp}>
           <div className="text-xs uppercase tracking-widest text-slate-500 mt-6">
             Success Stories

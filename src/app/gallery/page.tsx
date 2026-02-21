@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import MarketingNav from "../../components/MarketingNav";
 
 const images = [
   "/accessproimages/InShot_20251230_130942088.jpg.jpeg",
@@ -30,7 +29,6 @@ const GalleryPage = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 pb-16">
-        <MarketingNav />
         <motion.div
           initial="hidden"
           animate="show"

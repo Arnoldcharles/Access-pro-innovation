@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
-import MarketingNav from '../../components/MarketingNav';
 
 export default function PricingPage() {
   const easeOut = [0.16, 1, 0.3, 1] as const;
@@ -17,8 +16,6 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 pb-12">
-        <MarketingNav />
-
         <motion.header initial="hidden" animate="show" variants={stagger} className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-xs font-semibold text-blue-700 mb-4">
             Pricing
