@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import SiteNav from "../components/SiteNav";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -8,8 +9,25 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "AccessPro Innovation",
-  description: "AccessPro Innovation — event check-in reimagined.",
+  title: "Access Pro Innovation",
+  description:
+    "Access Pro Innovation is an event technology platform for registration, QR check-ins, attendee management, and event analytics.",
+  keywords: [
+    "Access Pro Innovation",
+    "event management platform",
+    "event check-in software",
+    "QR code check-in",
+    "attendee management",
+    "event registration Nigeria",
+    "event analytics",
+    "conference check-in system",
+  ],
+  authors: [{ name: "Access Pro Innovation" }],
+  creator: "Access Pro Innovation",
+  publisher: "Access Pro Innovation",
+  verification: {
+    google: "shWB2dySOoGU9v7CRcwie1vq14yGovZ5ghvFx3fRdWo",
+  },
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
@@ -23,26 +41,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${plusJakartaSans.variable} antialiased`}
-      >
+      <body className={`${plusJakartaSans.variable} antialiased`}>
+        <SiteNav />
         {children}
         <footer className="mt-16 border-t border-slate-200 bg-white text-slate-600">
-          <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
+          <div className="mx-auto max-w-[1200px] px-6 py-12 sm:px-10 lg:px-16">
             <div className="grid gap-10 md:grid-cols-[1.2fr,1fr,0.9fr,1fr]">
               <div>
-                <div className="text-lg font-black text-slate-900">
-                  AccessPro Innovation
-                </div>
-                <div className="text-sm text-slate-500 mt-2">
-                  Premium event check-in, guest flow, and on-site analytics for
-                  modern organizers.
+                <div className="text-lg font-black text-slate-900">Access Pro</div>
+                <div className="mt-2 text-sm text-slate-500">
+                  Premium event check-in, guest flow, and on-site analytics for modern organizers.
                 </div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
-                  Quick Links
-                </div>
+                <div className="mb-3 text-xs uppercase tracking-widest text-slate-500">Quick Links</div>
                 <nav className="grid grid-cols-2 gap-2 text-sm">
                   <a className="hover:text-slate-900" href="/">
                     Home
@@ -68,12 +80,10 @@ export default function RootLayout({
                 </nav>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
-                  Social
-                </div>
+                <div className="mb-3 text-xs uppercase tracking-widest text-slate-500">Social</div>
                 <div className="flex items-center gap-3">
                   <a
-                    className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm"
                     href="https://facebook.com"
                     aria-label="Facebook"
                   >
@@ -89,7 +99,7 @@ export default function RootLayout({
                     </svg>
                   </a>
                   <a
-                    className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm"
                     href="https://instagram.com"
                     aria-label="Instagram"
                   >
@@ -107,10 +117,8 @@ export default function RootLayout({
                 </div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-widest text-slate-500 mb-3">
-                  Contact
-                </div>
-                <div className="text-sm text-slate-600 space-y-2">
+                <div className="mb-3 text-xs uppercase tracking-widest text-slate-500">Contact</div>
+                <div className="space-y-2 text-sm text-slate-600">
                   <a
                     className="block hover:text-slate-900"
                     href="https://mail.google.com/mail/?view=cm&fs=1&to=accessproinnovation@gmail.com"
@@ -132,27 +140,22 @@ export default function RootLayout({
                   </a>
                 </div>
                 <div className="mt-4">
-                  <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">
-                    Newsletter
-                  </div>
-                  <form className="flex flex-col sm:flex-row gap-2">
+                  <div className="mb-2 text-xs uppercase tracking-widest text-slate-500">Newsletter</div>
+                  <form className="flex flex-col gap-2 sm:flex-row">
                     <input
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                       placeholder="Email address"
                       type="email"
                     />
-                    <button
-                      type="button"
-                      className="rounded-xl bg-slate-900 text-white text-sm px-4 py-2"
-                    >
+                    <button type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">
                       Subscribe
                     </button>
                   </form>
                 </div>
               </div>
             </div>
-            <div className="mt-10 pt-6 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <span>© 2026 AccessPro Innovation. All rights reserved.</span>
+            <div className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+              <span>(c) 2026 Access Pro. All rights reserved.</span>
               <span>Built for modern event teams.</span>
             </div>
           </div>
