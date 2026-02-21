@@ -19,46 +19,6 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
       <div className="max-w-[1100px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
-        <motion.nav
-          initial="hidden"
-          animate="show"
-          variants={fadeUp}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-16"
-        >
-          <Link className="flex items-center gap-3" href="/">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
-              A
-            </div>
-            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
-          </Link>
-          <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600">
-            <Link
-              className="hover:text-white transition-colors"
-              href="/features"
-            >
-              Features
-            </Link>
-            <Link
-              className="hover:text-white transition-colors"
-              href="/workflow"
-            >
-              Workflow
-            </Link>
-            <Link
-              className="hover:text-white transition-colors"
-              href="/pricing"
-            >
-              Pricing
-            </Link>
-            <Link
-              className="hover:text-white transition-colors"
-              href="/security"
-            >
-              Security
-            </Link>
-          </div>
-        </motion.nav>
-
         <motion.header
           initial="hidden"
           animate="show"
