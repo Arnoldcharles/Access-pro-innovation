@@ -8,6 +8,23 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Access Pro Innovation",
+  description:
+    "Access Pro Innovation provides event registration, QR check-ins, attendee management, and event analytics.",
+  email: "accessproinnovation@gmail.com",
+  telephone: "+2348133689639",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "12, Ogunbekun Street, Ladilak",
+    addressLocality: "Lagos",
+    addressCountry: "NG",
+  },
+  sameAs: ["https://www.facebook.com/share/18LBPkeZC6/?mibextid=wwXIfr", "https://www.instagram.com/accesspro_innovation?igsh=YmRxZ3U2dGhsb2Qx&utm_source=qr"],
+};
+
 export const metadata: Metadata = {
   title: "Access Pro Innovation",
   description:
@@ -42,6 +59,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${plusJakartaSans.variable} antialiased`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         <SiteNav />
         {children}
         <footer className="mt-16 border-t border-slate-200 bg-white text-slate-600">
