@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import SiteNav from "../components/SiteNav";
+import ConditionalSiteNav from "../components/ConditionalSiteNav";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -63,7 +63,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <SiteNav />
+        <ConditionalSiteNav />
         {children}
         <footer className="mt-16 border-t border-slate-200 bg-white text-slate-600">
           <div className="mx-auto max-w-[1200px] px-6 py-12 sm:px-10 lg:px-16">
@@ -105,7 +105,7 @@ export default function RootLayout({
                 <div className="flex items-center gap-3">
                   <a
                     className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm"
-                    href="https://facebook.com"
+                    href="https://www.facebook.com/share/18LBPkeZC6/?mibextid=wwXIfr"
                     aria-label="Facebook"
                   >
                     <svg
@@ -121,7 +121,7 @@ export default function RootLayout({
                   </a>
                   <a
                     className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm"
-                    href="https://instagram.com"
+                    href="https://www.instagram.com/accesspro_innovation?igsh=YmRxZ3U2dGhsb2Qx&utm_source=qr"
                     aria-label="Instagram"
                   >
                     <svg
