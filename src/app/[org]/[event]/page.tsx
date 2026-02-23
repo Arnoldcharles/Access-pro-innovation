@@ -174,6 +174,7 @@ export default function EventDashboardPage() {
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestError, setGuestError] = useState("");
+  const [guestLimitWarning, setGuestLimitWarning] = useState("");
   const [guestSaving, setGuestSaving] = useState(false);
   const [guestSearch, setGuestSearch] = useState("");
   const [uploadedSheetColumns, setUploadedSheetColumns] = useState<string[]>([]);
@@ -615,6 +616,7 @@ export default function EventDashboardPage() {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     setGuestError("");
+    setGuestLimitWarning("");
     const processingStart = Date.now();
     let minimumProcessingMs = 10000 + Math.floor(Math.random() * 5001);
     setUploadProcessing(true);
@@ -677,6 +679,18 @@ export default function EventDashboardPage() {
           : 10000 + Math.floor(Math.random() * 5001);
       if (parsed.length === 0) {
         setGuestError("No guests found in the uploaded spreadsheet.");
+        return;
+      }
+      if (isFree && parsed.length > maxGuests) {
+        setGuestLimitWarning(
+          `Free mode allows up to ${maxGuests} guests per event. This file has ${parsed.length} guests, so upload was stopped.`,
+        );
+        return;
+      }
+      if (isFree && totalGuestCount + parsed.length > maxGuests) {
+        setGuestLimitWarning(
+          `This upload would exceed the ${maxGuests}-guest free limit. Upgrade to continue.`,
+        );
         return;
       }
       setUploadedSheetColumns(columns);
@@ -1373,6 +1387,22 @@ export default function EventDashboardPage() {
             </div>
             {guestError ? (
               <div className="text-sm text-red-500 mb-4">{guestError}</div>
+            ) : null}
+            {guestLimitWarning ? (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <div className="text-sm font-semibold text-amber-800 mb-2">
+                  Upload blocked in free mode
+                </div>
+                <div className="text-sm text-amber-700 mb-3">
+                  {guestLimitWarning}
+                </div>
+                <Link
+                  href={`/${params.org}/pricing`}
+                  className="inline-flex items-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+                >
+                  View pricing
+                </Link>
+              </div>
             ) : null}
             <div className="space-y-2">
               {filteredGuests.length === 0 ? (
