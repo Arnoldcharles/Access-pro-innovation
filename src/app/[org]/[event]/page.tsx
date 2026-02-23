@@ -1422,6 +1422,22 @@ export default function EventDashboardPage() {
             {guestError ? (
               <div className="text-sm text-red-500 mb-4">{guestError}</div>
             ) : null}
+            {guestLimitWarning ? (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <div className="text-sm font-semibold text-amber-800 mb-2">
+                  Upload blocked in free mode
+                </div>
+                <div className="text-sm text-amber-700 mb-3">
+                  {guestLimitWarning}
+                </div>
+                <Link
+                  href={`/${params.org}/pricing`}
+                  className="inline-flex items-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+                >
+                  View pricing
+                </Link>
+              </div>
+            ) : null}
             <div className="space-y-2">
               {filteredGuests.length === 0 ? (
                 <div className="text-sm text-slate-500">
