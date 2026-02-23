@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   creator: "Access Pro Innovation",
   publisher: "Access Pro Innovation",
   verification: {
-    google: "shWB2dySOoGU9v7CRcwie1vq14yGovZ5ghvFx3fRdWo",
+    google: "/googled1bf1f0cd09c1268.html",
   },
   icons: {
     icon: "/favicon.png",
