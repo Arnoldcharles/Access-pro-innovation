@@ -71,6 +71,12 @@ type SheetLayout = {
   blocks: Array<{ titleCol: number; checkCol: number | null }>;
 };
 
+type StoredSheetLayout = {
+  columns: string[];
+  blocks: Array<{ titleCol: number; checkCol: number | null }>;
+  rows: Array<Record<string, string>>;
+};
+
 const tableCardPalettes = [
   {
     border: "border-amber-300",
@@ -98,6 +104,46 @@ const tableCardPalettes = [
     body: "bg-violet-50",
   },
 ];
+
+const serializeSheetLayout = (
+  layout: SheetLayout | null,
+): StoredSheetLayout | null => {
+  if (!layout) return null;
+  return {
+    columns: layout.columns,
+    blocks: layout.blocks,
+    rows: layout.rows.map((row) =>
+      Object.fromEntries(row.map((value, index) => [`c${index}`, value])),
+    ),
+  };
+};
+
+const deserializeSheetLayout = (value: unknown): SheetLayout | null => {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as {
+    columns?: unknown;
+    blocks?: unknown;
+    rows?: unknown;
+  };
+  if (!Array.isArray(raw.columns) || !Array.isArray(raw.blocks) || !Array.isArray(raw.rows)) {
+    return null;
+  }
+  const columns = raw.columns.map((column) => String(column ?? ""));
+  const blocks = raw.blocks
+    .map((block) => {
+      const b = block as { titleCol?: unknown; checkCol?: unknown };
+      if (typeof b.titleCol !== "number") return null;
+      const checkCol = typeof b.checkCol === "number" ? b.checkCol : null;
+      return { titleCol: b.titleCol, checkCol };
+    })
+    .filter(Boolean) as Array<{ titleCol: number; checkCol: number | null }>;
+  const rows = raw.rows.map((row) => {
+    if (!row || typeof row !== "object") return columns.map(() => "");
+    const r = row as Record<string, unknown>;
+    return columns.map((_, index) => String(r[`c${index}`] ?? ""));
+  });
+  return { columns, blocks, rows };
+};
 
 export default function EventDashboardPage() {
   const router = useRouter();
@@ -201,8 +247,9 @@ export default function EventDashboardPage() {
       setDate(data.date ?? "");
       setTime(data.time ?? "");
       setLocation(data.location ?? "");
-      setSheetLayout(data.guestTableLayout ?? null);
-      setUploadedSheetColumns(data.guestTableLayout?.columns ?? []);
+      const restoredLayout = deserializeSheetLayout(data.guestTableLayout);
+      setSheetLayout(restoredLayout);
+      setUploadedSheetColumns(restoredLayout?.columns ?? []);
       if (!data.gatesOpenAt) {
         await updateDoc(doc(db, "orgs", orgSlug, "events", eventSlug), {
           gatesOpenAt: new Date().toISOString(),
@@ -633,7 +680,7 @@ export default function EventDashboardPage() {
         doc(db, "orgs", orgSlug, "events", eventSlug),
         {
           guestCount: increment(pendingGuests.length),
-          guestTableLayout: sheetLayout ?? null,
+          guestTableLayout: serializeSheetLayout(sheetLayout),
         },
         { merge: true },
       );
