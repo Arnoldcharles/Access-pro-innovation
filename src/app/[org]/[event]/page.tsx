@@ -399,6 +399,9 @@ export default function EventDashboardPage() {
       .filter((block) => block.rows.length > 0);
   }, [guestSearch, sheetLayout]);
   const totalGuestCount = guests.length + pendingGuests.length;
+  const savedGuestCount = guests.length;
+  const checkedInCount = guests.filter((guest) => guest.checkedIn).length;
+  const remainingToCheckIn = Math.max(0, savedGuestCount - checkedInCount);
 
   const handleAddGuest = () => {
     setGuestError("");
@@ -1270,6 +1273,20 @@ export default function EventDashboardPage() {
         <section className="mt-10 grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
             <h2 className="text-lg font-bold mb-4">Guest list</h2>
+            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-wider text-emerald-700">Checked-in</div>
+                <div className="mt-1 text-2xl font-black text-emerald-800">{checkedInCount}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-wider text-slate-600">Saved guests</div>
+                <div className="mt-1 text-2xl font-black text-slate-900">{savedGuestCount}</div>
+              </div>
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-wider text-blue-700">Remaining</div>
+                <div className="mt-1 text-2xl font-black text-blue-800">{remainingToCheckIn}</div>
+              </div>
+            </div>
             <div className="mb-4">
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
