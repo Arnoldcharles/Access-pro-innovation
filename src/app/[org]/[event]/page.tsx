@@ -130,6 +130,8 @@ export default function EventDashboardPage() {
   const [inviteLink, setInviteLink] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteStatus, setInviteStatus] = useState("");
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardGuest, setCardGuest] = useState<Guest | null>(null);
@@ -848,6 +850,49 @@ export default function EventDashboardPage() {
     }
   };
 
+  const handleDeleteAllGuests = async () => {
+    const orgSlug = params?.org;
+    const eventSlug = params?.event;
+    if (!orgSlug || !eventSlug) return;
+    if (guests.length === 0 && pendingGuests.length === 0) {
+      setDeleteAllOpen(false);
+      return;
+    }
+
+    setDeleteAllLoading(true);
+    setGuestError("");
+    try {
+      const savedGuests = guests.filter((guest) => guest.id);
+      const chunkSize = 350;
+
+      for (let i = 0; i < savedGuests.length; i += chunkSize) {
+        const batch = writeBatch(db);
+        const chunk = savedGuests.slice(i, i + chunkSize);
+        chunk.forEach((guest) => {
+          if (!guest.id) return;
+          batch.delete(
+            doc(db, "orgs", orgSlug, "events", eventSlug, "guests", guest.id),
+          );
+        });
+        await batch.commit();
+      }
+
+      await updateDoc(doc(db, "orgs", orgSlug, "events", eventSlug), {
+        guestCount: 0,
+      });
+
+      setPendingGuests([]);
+      setGuestSearch("");
+      setDeleteAllOpen(false);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to delete all guests";
+      setGuestError(message);
+    } finally {
+      setDeleteAllLoading(false);
+    }
+  };
+
   const handleCheckInGuest = async (guest: Guest) => {
     const orgSlug = params?.org;
     const eventSlug = params?.event;
@@ -1192,6 +1237,13 @@ export default function EventDashboardPage() {
               >
                 Invite all via WhatsApp
               </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl bg-red-600 text-white text-sm hover:bg-red-500"
+                onClick={() => setDeleteAllOpen(true)}
+              >
+                Delete all
+              </button>
             </div>
             {guestError ? (
               <div className="text-sm text-red-500 mb-4">{guestError}</div>
@@ -1528,6 +1580,56 @@ export default function EventDashboardPage() {
                   />
                 </div>
               </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {deleteAllOpen ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0 bg-black/60"
+                onClick={() => {
+                  if (!deleteAllLoading) setDeleteAllOpen(false);
+                }}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+              >
+                <h3 className="text-lg font-bold mb-2">Delete all guests?</h3>
+                <p className="text-sm text-slate-600 mb-4">
+                  This will remove all saved and unsaved guests for this event.
+                  This action cannot be undone.
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                    onClick={() => setDeleteAllOpen(false)}
+                    disabled={deleteAllLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-2xl bg-red-600 text-white"
+                    onClick={handleDeleteAllGuests}
+                    disabled={deleteAllLoading}
+                  >
+                    {deleteAllLoading ? "Deleting..." : "Yes, delete all"}
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           ) : null}
         </AnimatePresence>
