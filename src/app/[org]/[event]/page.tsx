@@ -105,6 +105,16 @@ const tableCardPalettes = [
   },
 ];
 
+const isLikelyTableTitle = (value: string) => {
+  const v = value.trim().toLowerCase();
+  if (!v) return false;
+  if (v.includes("check-in")) return true;
+  if (v.includes("table")) return true;
+  if (v.includes("side") && v.includes("vip")) return true;
+  if (v.includes("section") || v.includes("group")) return true;
+  return false;
+};
+
 const serializeSheetLayout = (
   layout: SheetLayout | null,
 ): StoredSheetLayout | null => {
@@ -321,37 +331,71 @@ export default function EventDashboardPage() {
     });
     return map;
   }, [combinedGuests]);
+  const guestByTablePosition = useMemo(() => {
+    const map = new Map<string, Guest>();
+    combinedGuests.forEach((guest) => {
+      if (
+        guest.sourceType === "table" &&
+        typeof guest.tableColumnIndex === "number" &&
+        typeof guest.tableRowIndex === "number"
+      ) {
+        map.set(`${guest.tableColumnIndex}:${guest.tableRowIndex}`, guest);
+      }
+    });
+    return map;
+  }, [combinedGuests]);
   const sheetBlocksForView = useMemo(() => {
     if (!sheetLayout) return [];
     const query = guestSearch.trim().toLowerCase();
-    return sheetLayout.blocks
-      .map((block, blockIndex) => {
-        const title =
-          sheetLayout.columns[block.titleCol] || `Table ${blockIndex + 1}`;
-        const rows = sheetLayout.rows
-          .map((row, rowIndex) => {
-            const guestName = (row[block.titleCol] ?? "").trim();
-            const checkCell =
-              block.checkCol !== null ? (row[block.checkCol] ?? "").trim() : "";
-            if (!guestName) return null;
-            if (query && !guestName.toLowerCase().includes(query)) return null;
-            return {
-              key: `${blockIndex}-${rowIndex}-${guestName}`,
-              guestName,
-              checkCell,
-            };
-          })
-          .filter(Boolean) as Array<{
-          key: string;
-          guestName: string;
-          checkCell: string;
-        }>;
+    const currentTitles = sheetLayout.blocks.map(
+      (block, blockIndex) =>
+        sheetLayout.columns[block.titleCol] || `Table ${blockIndex + 1}`,
+    );
+    const order: string[] = [];
+    const rowsByTitle = new Map<
+      string,
+      Array<{
+        key: string;
+        guestName: string;
+        checkCell: string;
+        tableColumnIndex: number;
+        tableRowIndex: number;
+      }>
+    >();
 
-        return {
-          title,
-          rows,
-        };
-      })
+    const ensureTitle = (title: string) => {
+      if (!rowsByTitle.has(title)) rowsByTitle.set(title, []);
+      if (!order.includes(title)) order.push(title);
+    };
+
+    currentTitles.forEach((title) => ensureTitle(title));
+
+    sheetLayout.rows.forEach((row, rowIndex) => {
+      sheetLayout.blocks.forEach((block, blockIndex) => {
+        const cellValue = (row[block.titleCol] ?? "").trim();
+        if (!cellValue) return;
+        if (isLikelyTableTitle(cellValue)) {
+          currentTitles[blockIndex] = cellValue;
+          ensureTitle(cellValue);
+          return;
+        }
+        if (query && !cellValue.toLowerCase().includes(query)) return;
+        const title = currentTitles[blockIndex];
+        ensureTitle(title);
+        const checkCell =
+          block.checkCol !== null ? (row[block.checkCol] ?? "").trim() : "";
+        rowsByTitle.get(title)?.push({
+          key: `${blockIndex}-${rowIndex}-${cellValue}`,
+          guestName: cellValue,
+          checkCell,
+          tableColumnIndex: block.titleCol,
+          tableRowIndex: rowIndex,
+        });
+      });
+    });
+
+    return order
+      .map((title) => ({ title, rows: rowsByTitle.get(title) ?? [] }))
       .filter((block) => block.rows.length > 0);
   }, [guestSearch, sheetLayout]);
   const totalGuestCount = guests.length + pendingGuests.length;
@@ -456,34 +500,45 @@ export default function EventDashboardPage() {
       const dataRows = rows.slice(1);
       const blocks: Array<{ titleCol: number; checkCol: number | null }> = [];
       for (let i = 0; i < columns.length; i += 1) {
-        const title = columns[i]?.toLowerCase() ?? "";
+        const title = columns[i]?.toLowerCase().trim() ?? "";
         if (title.includes("check")) continue;
+        const hasAnyData =
+          title !== "" || dataRows.some((row) => (row[i] ?? "").trim() !== "");
+        if (!hasAnyData) continue;
         const nextTitle = columns[i + 1]?.toLowerCase() ?? "";
         const checkCol = nextTitle.includes("check") ? i + 1 : null;
         blocks.push({ titleCol: i, checkCol });
       }
 
       const guests: Guest[] = [];
+      const currentTitles = blocks.map(
+        (block, blockIndex) =>
+          columns[block.titleCol] || `Table ${blockIndex + 1}`,
+      );
       dataRows.forEach((row, rowIndex) => {
         blocks.forEach((block, blockIndex) => {
-          const guestName = (row[block.titleCol] ?? "").trim();
-          if (!guestName) return;
-          const [firstName = "", ...rest] = guestName.split(/\s+/);
+          const cellValue = (row[block.titleCol] ?? "").trim();
+          if (!cellValue) return;
+          if (isLikelyTableTitle(cellValue)) {
+            currentTitles[blockIndex] = cellValue;
+            return;
+          }
+          const [firstName = "", ...rest] = cellValue.split(/\s+/);
           const lastName = rest.join(" ");
           guests.push({
             firstName,
             lastName,
-            name: guestName,
+            name: cellValue,
             phone: "",
             email: "",
             sourceType: "table",
-            tableName: columns[block.titleCol] ?? `Table ${blockIndex + 1}`,
+            tableName: currentTitles[blockIndex],
             tableRowIndex: rowIndex,
             tableColumnIndex: block.titleCol,
             sheetColumns: ["Table", "Guest Name"],
             sheetRow: {
-              Table: columns[block.titleCol] ?? `Table ${block.titleCol + 1}`,
-              "Guest Name": guestName,
+              Table: currentTitles[blockIndex],
+              "Guest Name": cellValue,
             },
             status: "invited",
             checkedIn: false,
@@ -1331,7 +1386,11 @@ export default function EventDashboardPage() {
                             </div>
                             <div className={`max-h-72 overflow-y-auto ${palette.body}`}>
                               {block.rows.map((row) => {
-                                const linkedGuest = getLinkedGuest(row.guestName);
+                                const fromPosition = guestByTablePosition.get(
+                                  `${row.tableColumnIndex}:${row.tableRowIndex}`,
+                                );
+                                const linkedGuest =
+                                  fromPosition ?? getLinkedGuest(row.guestName);
                                 return (
                                   <div
                                     key={row.key}
