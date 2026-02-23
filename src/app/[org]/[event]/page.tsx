@@ -37,6 +37,7 @@ type EventData = {
   nameFont?: string;
   nameBg?: boolean;
   status?: string;
+  guestTableLayout?: SheetLayout | null;
 };
 
 type Guest = {
@@ -46,6 +47,10 @@ type Guest = {
   name: string;
   phone: string;
   email: string;
+  sourceType?: "table" | "list";
+  tableName?: string;
+  tableRowIndex?: number;
+  tableColumnIndex?: number;
   sheetColumns?: string[];
   sheetRow?: Record<string, string>;
   status?: "invited" | "accepted" | "declined";
@@ -196,6 +201,8 @@ export default function EventDashboardPage() {
       setDate(data.date ?? "");
       setTime(data.time ?? "");
       setLocation(data.location ?? "");
+      setSheetLayout(data.guestTableLayout ?? null);
+      setUploadedSheetColumns(data.guestTableLayout?.columns ?? []);
       if (!data.gatesOpenAt) {
         await updateDoc(doc(db, "orgs", orgSlug, "events", eventSlug), {
           gatesOpenAt: new Date().toISOString(),
@@ -256,13 +263,14 @@ export default function EventDashboardPage() {
     if (firstWithSheet?.sheetColumns?.length) return firstWithSheet.sheetColumns;
     return ["firstName", "lastName", "phone", "email"];
   }, [combinedGuests, uploadedSheetColumns]);
-  const guestByName = useMemo(() => {
-    const map = new Map<string, Guest>();
+  const guestBucketsByName = useMemo(() => {
+    const map = new Map<string, Guest[]>();
     combinedGuests.forEach((guest) => {
       const key = guest.name.trim().toLowerCase();
-      if (key && !map.has(key)) {
-        map.set(key, guest);
-      }
+      if (!key) return;
+      const existing = map.get(key) ?? [];
+      existing.push(guest);
+      map.set(key, existing);
     });
     return map;
   }, [combinedGuests]);
@@ -303,10 +311,6 @@ export default function EventDashboardPage() {
 
   const handleAddGuest = () => {
     setGuestError("");
-    if (isFree && totalGuestCount >= maxGuests) {
-      setUpgradeOpen(true);
-      return;
-    }
     if (!guestFirstName.trim() || !guestLastName.trim() || !guestPhone.trim()) {
       setGuestError("First name, last name, and phone number are required.");
       return;
@@ -320,6 +324,7 @@ export default function EventDashboardPage() {
         name: fullName,
         phone: guestPhone.trim(),
         email: guestEmail.trim(),
+        sourceType: "list",
         status: "invited",
         checkedIn: false,
         checkInCount: 0,
@@ -412,8 +417,8 @@ export default function EventDashboardPage() {
       }
 
       const guests: Guest[] = [];
-      dataRows.forEach((row) => {
-        blocks.forEach((block) => {
+      dataRows.forEach((row, rowIndex) => {
+        blocks.forEach((block, blockIndex) => {
           const guestName = (row[block.titleCol] ?? "").trim();
           if (!guestName) return;
           const [firstName = "", ...rest] = guestName.split(/\s+/);
@@ -424,6 +429,10 @@ export default function EventDashboardPage() {
             name: guestName,
             phone: "",
             email: "",
+            sourceType: "table",
+            tableName: columns[block.titleCol] ?? `Table ${blockIndex + 1}`,
+            tableRowIndex: rowIndex,
+            tableColumnIndex: block.titleCol,
             sheetColumns: ["Table", "Guest Name"],
             sheetRow: {
               Table: columns[block.titleCol] ?? `Table ${block.titleCol + 1}`,
@@ -479,6 +488,7 @@ export default function EventDashboardPage() {
         name,
         phone: phone.trim(),
         email: email.trim(),
+        sourceType: "list" as const,
         sheetColumns: columns,
         sheetRow: rowMap,
         status: "invited" as const,
@@ -501,7 +511,7 @@ export default function EventDashboardPage() {
   ) => {
     setGuestError("");
     const processingStart = Date.now();
-    const minimumProcessingMs = 5000 + Math.floor(Math.random() * 5001);
+    let minimumProcessingMs = 10000 + Math.floor(Math.random() * 5001);
     setUploadProcessing(true);
     const file = event.target.files?.[0];
     try {
@@ -556,25 +566,16 @@ export default function EventDashboardPage() {
       const parsed = parsedGuests.filter(
         (guest) => guest.name || guest.email || guest.phone,
       );
+      minimumProcessingMs =
+        parsed.length >= 100
+          ? 25000 + Math.floor(Math.random() * 5001)
+          : 10000 + Math.floor(Math.random() * 5001);
       if (parsed.length === 0) {
         setGuestError("No guests found in the uploaded spreadsheet.");
         return;
       }
       setUploadedSheetColumns(columns);
       setSheetLayout(parsedLayout);
-      if (isFree) {
-        const remaining = Math.max(0, maxGuests - totalGuestCount);
-        if (remaining <= 0) {
-          setUpgradeOpen(true);
-          return;
-        }
-        const sliced = parsed.slice(0, remaining);
-        if (sliced.length < parsed.length) {
-          setGuestError("Guest list truncated to fit free mode limit (500).");
-        }
-        setPendingGuests((prev) => [...prev, ...sliced]);
-        return;
-      }
       setPendingGuests((prev) => [...prev, ...parsed]);
     } catch (err) {
       const message =
@@ -596,10 +597,6 @@ export default function EventDashboardPage() {
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug) return;
     if (pendingGuests.length === 0) return;
-    if (isFree && totalGuestCount > maxGuests) {
-      setUpgradeOpen(true);
-      return;
-    }
     setGuestSaving(true);
     setGuestError("");
     try {
@@ -620,6 +617,10 @@ export default function EventDashboardPage() {
           name: guest.name,
           phone: guest.phone,
           email: guest.email,
+          sourceType: guest.sourceType ?? "list",
+          tableName: guest.tableName ?? null,
+          tableRowIndex: guest.tableRowIndex ?? null,
+          tableColumnIndex: guest.tableColumnIndex ?? null,
           sheetColumns: guest.sheetColumns ?? null,
           sheetRow: guest.sheetRow ?? null,
           status: guest.status ?? "invited",
@@ -630,7 +631,10 @@ export default function EventDashboardPage() {
       });
       batch.set(
         doc(db, "orgs", orgSlug, "events", eventSlug),
-        { guestCount: increment(pendingGuests.length) },
+        {
+          guestCount: increment(pendingGuests.length),
+          guestTableLayout: sheetLayout ?? null,
+        },
         { merge: true },
       );
       await batch.commit();
@@ -879,9 +883,12 @@ export default function EventDashboardPage() {
 
       await updateDoc(doc(db, "orgs", orgSlug, "events", eventSlug), {
         guestCount: 0,
+        guestTableLayout: null,
       });
 
       setPendingGuests([]);
+      setSheetLayout(null);
+      setUploadedSheetColumns([]);
       setGuestSearch("");
       setDeleteAllOpen(false);
     } catch (err) {
@@ -1257,49 +1264,60 @@ export default function EventDashboardPage() {
                 <>
                   {sheetBlocksForView.length > 0 ? (
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                      {sheetBlocksForView.map((block, index) => {
-                        const palette = tableCardPalettes[index % tableCardPalettes.length];
-                        return (
-                        <div key={`${block.title}-${index}`} className={`rounded-xl border overflow-hidden ${palette.border}`}>
-                          <div className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${palette.header}`}>
-                            {block.title}
-                          </div>
-                          <div className={`max-h-72 overflow-y-auto ${palette.body}`}>
-                            {block.rows.map((row) => {
-                              const lookupKey = row.guestName.toLowerCase();
-                              const linkedGuest = guestByName.get(lookupKey);
-                              return (
-                                <div
-                                  key={row.key}
-                                  className="grid grid-cols-[1fr,auto] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm"
-                                >
-                                  <div className="pr-2 break-words">{row.guestName}</div>
-                                  <button
-                                    type="button"
-                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap ${
-                                      linkedGuest?.checkedIn
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : "bg-blue-600 text-white hover:bg-blue-500"
-                                    }`}
-                                    onClick={() => {
-                                      if (linkedGuest) handleCheckInGuest(linkedGuest);
-                                    }}
-                                    disabled={!linkedGuest || Boolean(linkedGuest.checkedIn)}
-                                    title={!linkedGuest ? "Save guests first to enable check-in" : ""}
+                      {(() => {
+                        const usage = new Map<string, number>();
+                        const getLinkedGuest = (guestName: string) => {
+                          const key = guestName.trim().toLowerCase();
+                          const bucket = guestBucketsByName.get(key) ?? [];
+                          if (bucket.length === 0) return null;
+                          const used = usage.get(key) ?? 0;
+                          const picked = bucket[used] ?? bucket[bucket.length - 1];
+                          usage.set(key, used + 1);
+                          return picked;
+                        };
+                        return sheetBlocksForView.map((block, index) => {
+                          const palette = tableCardPalettes[index % tableCardPalettes.length];
+                          return (
+                          <div key={`${block.title}-${index}`} className={`rounded-xl border overflow-hidden ${palette.border}`}>
+                            <div className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${palette.header}`}>
+                              {block.title}
+                            </div>
+                            <div className={`max-h-72 overflow-y-auto ${palette.body}`}>
+                              {block.rows.map((row) => {
+                                const linkedGuest = getLinkedGuest(row.guestName);
+                                return (
+                                  <div
+                                    key={row.key}
+                                    className="grid grid-cols-[1fr,auto] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm"
                                   >
-                                    {linkedGuest?.checkedIn
-                                      ? "Checked"
-                                      : linkedGuest
-                                        ? "Check in"
-                                        : row.checkCell || "Pending"}
-                                  </button>
-                                </div>
-                              );
-                            })}
+                                    <div className="pr-2 break-words">{row.guestName}</div>
+                                    <button
+                                      type="button"
+                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap ${
+                                        linkedGuest?.checkedIn
+                                          ? "bg-emerald-100 text-emerald-700"
+                                          : "bg-blue-600 text-white hover:bg-blue-500"
+                                      }`}
+                                      onClick={() => {
+                                        if (linkedGuest) handleCheckInGuest(linkedGuest);
+                                      }}
+                                      disabled={!linkedGuest || Boolean(linkedGuest.checkedIn)}
+                                      title={!linkedGuest ? "Save guests first to enable check-in" : ""}
+                                    >
+                                      {linkedGuest?.checkedIn
+                                        ? "Checked"
+                                        : linkedGuest
+                                          ? "Check in"
+                                          : row.checkCell || "Pending"}
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                        );
-                      })}
+                          );
+                        });
+                      })()}
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 mb-4">
