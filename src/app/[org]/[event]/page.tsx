@@ -46,6 +46,8 @@ type Guest = {
   name: string;
   phone: string;
   email: string;
+  sheetColumns?: string[];
+  sheetRow?: Record<string, string>;
   status?: "invited" | "accepted" | "declined";
   checkedIn?: boolean;
   checkedInAt?: string;
@@ -78,6 +80,8 @@ export default function EventDashboardPage() {
   const [guestEmail, setGuestEmail] = useState("");
   const [guestError, setGuestError] = useState("");
   const [guestSaving, setGuestSaving] = useState(false);
+  const [guestSearch, setGuestSearch] = useState("");
+  const [uploadedSheetColumns, setUploadedSheetColumns] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
@@ -199,6 +203,21 @@ export default function EventDashboardPage() {
     () => [...guests, ...pendingGuests],
     [guests, pendingGuests],
   );
+  const filteredGuests = useMemo(() => {
+    const query = guestSearch.trim().toLowerCase();
+    if (!query) return combinedGuests;
+    return combinedGuests.filter((guest) => {
+      const fullName =
+        `${guest.firstName ?? ""} ${guest.lastName ?? ""}`.trim() || guest.name;
+      return fullName.toLowerCase().includes(query);
+    });
+  }, [combinedGuests, guestSearch]);
+  const sheetColumnsForView = useMemo(() => {
+    if (uploadedSheetColumns.length > 0) return uploadedSheetColumns;
+    const firstWithSheet = combinedGuests.find((guest) => guest.sheetColumns?.length);
+    if (firstWithSheet?.sheetColumns?.length) return firstWithSheet.sheetColumns;
+    return ["firstName", "lastName", "phone", "email"];
+  }, [combinedGuests, uploadedSheetColumns]);
   const totalGuestCount = guests.length + pendingGuests.length;
 
   const handleAddGuest = () => {
@@ -231,34 +250,173 @@ export default function EventDashboardPage() {
     setGuestEmail("");
   };
 
-  const parseCsv = (text: string): Guest[] => {
-    const lines = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (lines.length === 0) return [];
-    const header = lines[0].toLowerCase();
-    const hasHeader =
-      header.includes("name") ||
-      header.includes("email") ||
-      header.includes("phone");
+  const parseDelimitedRows = (text: string, delimiter: "," | "\t") => {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      const next = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && next === '"') {
+          cell += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === delimiter && !inQuotes) {
+        row.push(cell.trim());
+        cell = "";
+      } else if ((char === "\n" || char === "\r") && !inQuotes) {
+        if (char === "\r" && next === "\n") i += 1;
+        row.push(cell.trim());
+        const hasValue = row.some((value) => value !== "");
+        if (hasValue) rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += char;
+      }
+    }
+
+    if (cell.length > 0 || row.length > 0) {
+      row.push(cell.trim());
+      const hasValue = row.some((value) => value !== "");
+      if (hasValue) rows.push(row);
+    }
+
+    return rows;
+  };
+
+  const parseSpreadsheetText = (text: string) => {
+    const delimiter: "," | "\t" = text.includes("\t") ? "\t" : ",";
+    const rows = parseDelimitedRows(text, delimiter);
+    if (rows.length === 0) {
+      return { columns: [] as string[], guests: [] as Guest[] };
+    }
+
+    const rawHeader = rows[0].map((cell, index) =>
+      cell.trim() ? cell.trim() : `Column ${index + 1}`,
+    );
+    const normalizedHeader = rawHeader.map((header) => header.toLowerCase());
+    const hasHeader = normalizedHeader.some(
+      (header) =>
+        header.includes("name") ||
+        header.includes("phone") ||
+        header.includes("email"),
+    );
+
+    const columns = hasHeader
+      ? rawHeader
+      : rawHeader.map((_, index) => `Column ${index + 1}`);
     const startIndex = hasHeader ? 1 : 0;
-    return lines.slice(startIndex).map((line) => {
-      const [firstName = "", lastName = "", phone = "", email = ""] = line
-        .split(",")
-        .map((value) => value.trim());
-      const name = `${firstName} ${lastName}`.trim();
+
+    const guests = rows.slice(startIndex).map((row) => {
+      const rowMap: Record<string, string> = {};
+      columns.forEach((column, index) => {
+        rowMap[column] = (row[index] ?? "").trim();
+      });
+
+      const norm = (value: string) => value.toLowerCase().replace(/\s+/g, "");
+      const findColumn = (candidates: string[]) => {
+        const found = columns.find((column) =>
+          candidates.some((candidate) => norm(column).includes(candidate)),
+        );
+        return found ? rowMap[found] ?? "" : "";
+      };
+
+      const firstName = findColumn(["firstname", "first", "givenname"]);
+      const lastName = findColumn(["lastname", "last", "surname"]);
+      const explicitName = findColumn(["fullname", "name"]);
+      const phone = findColumn(["phone", "mobile", "tel"]);
+      const email = findColumn(["email", "mail"]);
+      const fallbackName = Object.values(rowMap).find((value) => value)?.trim() ?? "";
+      const name =
+        explicitName.trim() ||
+        `${firstName} ${lastName}`.trim() ||
+        fallbackName;
+
       return {
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         name,
-        phone,
-        email,
-        status: "invited",
+        phone: phone.trim(),
+        email: email.trim(),
+        sheetColumns: columns,
+        sheetRow: rowMap,
+        status: "invited" as const,
         checkedIn: false,
         checkInCount: 0,
       };
     });
+
+    return { columns, guests };
+  };
+
+  const parseSpreadsheetRows = (rows: string[][]) => {
+    if (rows.length === 0) {
+      return { columns: [] as string[], guests: [] as Guest[] };
+    }
+
+    const rawHeader = rows[0].map((cell, index) =>
+      cell.trim() ? cell.trim() : `Column ${index + 1}`,
+    );
+    const normalizedHeader = rawHeader.map((header) => header.toLowerCase());
+    const hasHeader = normalizedHeader.some(
+      (header) =>
+        header.includes("name") ||
+        header.includes("phone") ||
+        header.includes("email"),
+    );
+
+    const columns = hasHeader
+      ? rawHeader
+      : rawHeader.map((_, index) => `Column ${index + 1}`);
+    const startIndex = hasHeader ? 1 : 0;
+
+    const guests = rows.slice(startIndex).map((row) => {
+      const rowMap: Record<string, string> = {};
+      columns.forEach((column, index) => {
+        rowMap[column] = (row[index] ?? "").trim();
+      });
+
+      const norm = (value: string) => value.toLowerCase().replace(/\s+/g, "");
+      const findColumn = (candidates: string[]) => {
+        const found = columns.find((column) =>
+          candidates.some((candidate) => norm(column).includes(candidate)),
+        );
+        return found ? rowMap[found] ?? "" : "";
+      };
+
+      const firstName = findColumn(["firstname", "first", "givenname"]);
+      const lastName = findColumn(["lastname", "last", "surname"]);
+      const explicitName = findColumn(["fullname", "name"]);
+      const phone = findColumn(["phone", "mobile", "tel"]);
+      const email = findColumn(["email", "mail"]);
+      const fallbackName = Object.values(rowMap).find((value) => value)?.trim() ?? "";
+      const name =
+        explicitName.trim() ||
+        `${firstName} ${lastName}`.trim() ||
+        fallbackName;
+
+      return {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        name,
+        phone: phone.trim(),
+        email: email.trim(),
+        sheetColumns: columns,
+        sheetRow: rowMap,
+        status: "invited" as const,
+        checkedIn: false,
+        checkInCount: 0,
+      };
+    });
+
+    return { columns, guests };
   };
 
   const handleImportFile = async (
@@ -267,24 +425,58 @@ export default function EventDashboardPage() {
     setGuestError("");
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.type === "application/pdf") {
+    const lowerName = file.name.toLowerCase();
+    const isSupported =
+      lowerName.endsWith(".csv") ||
+      lowerName.endsWith(".tsv") ||
+      lowerName.endsWith(".txt") ||
+      lowerName.endsWith(".xlsx") ||
+      lowerName.endsWith(".xls");
+    if (!isSupported) {
       setGuestError(
-        "PDF import is not supported yet. Please upload a CSV file.",
+        "Upload CSV/TSV or Excel (.xlsx/.xls) file.",
       );
       return;
     }
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setGuestError("Please upload a CSV file.");
-      return;
+    let columns: string[] = [];
+    let parsedGuests: Guest[] = [];
+
+    if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+      const xlsx = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const workbook = xlsx.read(buffer, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const sheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
+      if (!sheet) {
+        setGuestError("No sheet found in the uploaded Excel file.");
+        return;
+      }
+      const rawRows = xlsx.utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
+        header: 1,
+        defval: "",
+        raw: false,
+      });
+      const normalizedRows = rawRows.map((row) =>
+        row.map((cell) => (cell ?? "").toString().trim()),
+      );
+      const parsedFromRows = parseSpreadsheetRows(normalizedRows);
+      columns = parsedFromRows.columns;
+      parsedGuests = parsedFromRows.guests;
+    } else {
+      const text = await file.text();
+      const parsedFromText = parseSpreadsheetText(text);
+      columns = parsedFromText.columns;
+      parsedGuests = parsedFromText.guests;
     }
-    const text = await file.text();
-    const parsed = parseCsv(text).filter(
+
+    const parsed = parsedGuests.filter(
       (guest) => guest.name || guest.email || guest.phone,
     );
     if (parsed.length === 0) {
-      setGuestError("No guests found in the CSV.");
+      setGuestError("No guests found in the uploaded spreadsheet.");
       return;
     }
+    setUploadedSheetColumns(columns);
     if (isFree) {
       const remaining = Math.max(0, maxGuests - totalGuestCount);
       if (remaining <= 0) {
@@ -330,6 +522,8 @@ export default function EventDashboardPage() {
           name: guest.name,
           phone: guest.phone,
           email: guest.email,
+          sheetColumns: guest.sheetColumns ?? null,
+          sheetRow: guest.sheetRow ?? null,
           status: guest.status ?? "invited",
           checkedIn: guest.checkedIn ?? false,
           checkInCount: guest.checkInCount ?? 0,
@@ -555,6 +749,34 @@ export default function EventDashboardPage() {
     }
     if (typeof index === "number") {
       setPendingGuests((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleCheckInGuest = async (guest: Guest) => {
+    const orgSlug = params?.org;
+    const eventSlug = params?.event;
+    if (!orgSlug || !eventSlug) return;
+    if (!guest.id) {
+      setGuestError("Save imported guests before checking in.");
+      return;
+    }
+    if (isFree && (guest.checkInCount ?? 0) >= maxScans) {
+      setUpgradeOpen(true);
+      return;
+    }
+    try {
+      await updateDoc(
+        doc(db, "orgs", orgSlug, "events", eventSlug, "guests", guest.id),
+        {
+          checkedIn: true,
+          checkedInAt: new Date().toISOString(),
+          checkInCount: increment(1),
+        },
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to check in guest";
+      setGuestError(message);
     }
   };
 
@@ -798,6 +1020,14 @@ export default function EventDashboardPage() {
         <section className="mt-10 grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
             <h2 className="text-lg font-bold mb-4">Guest list</h2>
+            <div className="mb-4">
+              <input
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                placeholder="Search guest name to check in"
+                value={guestSearch}
+                onChange={(event) => setGuestSearch(event.target.value)}
+              />
+            </div>
             <div className="grid sm:grid-cols-4 gap-3 mb-4">
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
@@ -836,10 +1066,10 @@ export default function EventDashboardPage() {
                 Add guest
               </button>
               <label className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm cursor-pointer">
-                Import CSV or PDF
+                Import Spreadsheet
                 <input
                   type="file"
-                  accept=".csv,.pdf"
+                  accept=".csv,.tsv,.txt,.xlsx,.xls"
                   className="hidden"
                   onChange={handleImportFile}
                 />
@@ -871,19 +1101,79 @@ export default function EventDashboardPage() {
               <div className="text-sm text-red-500 mb-4">{guestError}</div>
             ) : null}
             <div className="space-y-2">
-              {combinedGuests.length === 0 ? (
+              {filteredGuests.length === 0 ? (
                 <div className="text-sm text-slate-500">
-                  No guests added yet.
+                  No guests match your search.
                 </div>
               ) : (
                 <>
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 mb-4">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-white">
+                        <tr>
+                          {sheetColumnsForView.map((column) => (
+                            <th
+                              key={column}
+                              className="px-3 py-2 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200 whitespace-nowrap"
+                            >
+                              {column}
+                            </th>
+                          ))}
+                          <th className="px-3 py-2 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200 whitespace-nowrap">
+                            Check-in
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredGuests.map((guest, index) => (
+                          <tr key={`sheet-${guest.email || guest.phone || guest.name}-${index}`} className="border-b border-slate-200 last:border-b-0">
+                            {sheetColumnsForView.map((column) => {
+                              const valueFromSheet = guest.sheetRow?.[column];
+                              const fallbackByName =
+                                column.toLowerCase().includes("first")
+                                  ? guest.firstName
+                                  : column.toLowerCase().includes("last")
+                                    ? guest.lastName
+                                    : column.toLowerCase().includes("phone")
+                                      ? guest.phone
+                                      : column.toLowerCase().includes("mail")
+                                        ? guest.email
+                                        : column.toLowerCase().includes("name")
+                                          ? guest.name
+                                          : "";
+                              const cellValue = valueFromSheet ?? fallbackByName ?? "";
+                              return (
+                                <td key={`${column}-${index}`} className="px-3 py-2 whitespace-nowrap">
+                                  {cellValue || "-"}
+                                </td>
+                              );
+                            })}
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <button
+                                type="button"
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
+                                  guest.checkedIn
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-blue-600 text-white hover:bg-blue-500"
+                                }`}
+                                onClick={() => handleCheckInGuest(guest)}
+                                disabled={Boolean(guest.checkedIn)}
+                              >
+                                {guest.checkedIn ? "Checked-in" : "Check in"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                   <div className="hidden sm:grid sm:grid-cols-4 gap-3 text-xs uppercase tracking-widest text-slate-500 px-2">
                     <div>First / Last</div>
                     <div>Phone</div>
                     <div>Email</div>
                     <div>Status</div>
                   </div>
-                  {combinedGuests.map((guest, index) => {
+                  {filteredGuests.map((guest, index) => {
                     const isPending = !guest.id;
                     const isEditing = editingId === guest.id;
                     return (
@@ -1038,10 +1328,10 @@ export default function EventDashboardPage() {
             <h2 className="text-lg font-bold mb-4">Import tips</h2>
             <div className="space-y-3 text-sm text-slate-600">
               <div>
-                CSV columns supported: firstName, lastName, phone, email
+                Upload CSV/TSV or Excel (.xlsx/.xls) to preserve your table column order.
               </div>
-              <div>Header row is optional.</div>
-              <div>PDF import is not available yet.</div>
+              <div>Header row is optional; if present, column names are used in the guest table.</div>
+              <div>Use the search bar to find guest names quickly and check them in.</div>
             </div>
           </div>
         </section>
