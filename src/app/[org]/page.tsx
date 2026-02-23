@@ -60,6 +60,8 @@ export default function OrgDashboardPage() {
   const [eventsUnsub, setEventsUnsub] = useState<null | (() => void)>(null);
   const [orgs, setOrgs] = useState<Array<{ slug: string; name?: string }>>([]);
   const [connectedDevices, setConnectedDevices] = useState(0);
+  const [connectedDeviceNames, setConnectedDeviceNames] = useState<string[]>([]);
+  const [devicesModalOpen, setDevicesModalOpen] = useState(false);
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -184,16 +186,27 @@ export default function OrgDashboardPage() {
         (snapshot) => {
           const now = Date.now();
           const activeWindowMs = 70 * 1000;
-          const count = snapshot.docs.filter((docSnap) => {
-            const data = docSnap.data() as { lastSeen?: { toMillis?: () => number }; online?: boolean };
+          const activeDocs = snapshot.docs.filter((docSnap) => {
+            const data = docSnap.data() as {
+              lastSeen?: { toMillis?: () => number };
+              online?: boolean;
+              deviceName?: string;
+            };
             if (data.online === false) return false;
             const lastSeenMs =
               typeof data.lastSeen?.toMillis === "function"
                 ? data.lastSeen.toMillis()
                 : 0;
             return now - lastSeenMs <= activeWindowMs;
-          }).length;
-          setConnectedDevices(count);
+          });
+          setConnectedDevices(activeDocs.length);
+          setConnectedDeviceNames(
+            activeDocs
+              .map((docSnap) => {
+                const data = docSnap.data() as { deviceName?: string };
+                return data.deviceName || docSnap.id.slice(0, 6);
+              }),
+          );
         },
         (err) => {
           const code = (err as { code?: string }).code;
@@ -560,16 +573,29 @@ export default function OrgDashboardPage() {
             {
               label: "Connected devices",
               value: String(connectedDevices),
-              note: "Live org activity",
+              note:
+                connectedDeviceNames.length > 0
+                  ? `${connectedDeviceNames.slice(0, 2).join(", ")}${connectedDeviceNames.length > 2 ? ` +${connectedDeviceNames.length - 2} more` : ""}`
+                  : "Live org activity",
             },
           ].map((card) => (
             <div
               key={card.label}
               className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm"
             >
-              <div className="text-xs uppercase tracking-widest text-slate-500">
-                {card.label}
-              </div>
+              {card.label === "Connected devices" ? (
+                <button
+                  type="button"
+                  className="text-xs uppercase tracking-widest text-blue-600 hover:text-blue-700"
+                  onClick={() => setDevicesModalOpen(true)}
+                >
+                  {card.label}
+                </button>
+              ) : (
+                <div className="text-xs uppercase tracking-widest text-slate-500">
+                  {card.label}
+                </div>
+              )}
               <div className="text-3xl font-black mt-2">{card.value}</div>
               <div className="text-sm text-slate-500 mt-2">{card.note}</div>
             </div>
@@ -889,6 +915,57 @@ export default function OrgDashboardPage() {
                 </button>
               ) : null}
             </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {devicesModalOpen ? (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close"
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setDevicesModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="relative z-10 w-full max-w-[520px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold mb-2">Connected devices</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                {connectedDevices} device{connectedDevices === 1 ? "" : "s"} currently connected.
+              </p>
+              <div className="max-h-72 overflow-y-auto rounded-2xl border border-slate-200">
+                {connectedDeviceNames.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-slate-500">No active devices.</div>
+                ) : (
+                  connectedDeviceNames.map((deviceName, index) => (
+                    <div
+                      key={`${deviceName}-${index}`}
+                      className="px-4 py-3 text-sm border-t border-slate-100 first:border-t-0"
+                    >
+                      {deviceName}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700"
+                  onClick={() => setDevicesModalOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>

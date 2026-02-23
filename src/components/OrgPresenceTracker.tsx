@@ -24,6 +24,14 @@ const getDeviceId = () => {
   return next;
 };
 
+const getDeviceLabel = (deviceId: string) => {
+  if (typeof navigator === "undefined") return `Device ${deviceId.slice(0, 6)}`;
+  const ua = navigator.userAgent.toLowerCase();
+  const isMobile = /iphone|android|mobile|ipad/.test(ua);
+  const platform = navigator.platform || (isMobile ? "Mobile" : "Desktop");
+  return `${platform} - ${deviceId.slice(0, 6)}`;
+};
+
 export default function OrgPresenceTracker() {
   const params = useParams<{ org: string }>();
 
@@ -34,6 +42,7 @@ export default function OrgPresenceTracker() {
     let active = true;
     let uid = "";
     const deviceId = getDeviceId();
+    const deviceName = getDeviceLabel(deviceId);
 
     const heartbeat = async (online: boolean) => {
       if (!active || !uid || !deviceId || !orgSlug) return;
@@ -43,6 +52,7 @@ export default function OrgPresenceTracker() {
           uid,
           orgSlug,
           deviceId,
+          deviceName,
           online,
           userAgent:
             typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 240) : "",
