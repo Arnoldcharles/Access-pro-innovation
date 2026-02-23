@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, cubicBezier } from "framer-motion";
@@ -175,6 +175,7 @@ export default function EventDashboardPage() {
   const [guestEmail, setGuestEmail] = useState("");
   const [guestError, setGuestError] = useState("");
   const [guestLimitWarning, setGuestLimitWarning] = useState("");
+  const [guestLimitModalOpen, setGuestLimitModalOpen] = useState(false);
   const [guestSaving, setGuestSaving] = useState(false);
   const [guestSearch, setGuestSearch] = useState("");
   const [uploadedSheetColumns, setUploadedSheetColumns] = useState<string[]>([]);
@@ -203,8 +204,36 @@ export default function EventDashboardPage() {
   const isFree = orgPlan !== "pro";
   const maxGuests = 500;
   const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
+  const guestLimitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeGuestLimitModal = () => {
+    setGuestLimitModalOpen(false);
+    if (guestLimitTimerRef.current) {
+      clearTimeout(guestLimitTimerRef.current);
+      guestLimitTimerRef.current = null;
+    }
+  };
+
+  const openGuestLimitModal = (message: string) => {
+    setGuestLimitWarning(message);
+    setGuestLimitModalOpen(true);
+    if (guestLimitTimerRef.current) {
+      clearTimeout(guestLimitTimerRef.current);
+    }
+    guestLimitTimerRef.current = setTimeout(() => {
+      setGuestLimitModalOpen(false);
+      guestLimitTimerRef.current = null;
+    }, 10000);
+  };
   const maxScans = isFree ? 5 : Number.MAX_SAFE_INTEGER;
   const maxScansLabel = isFree ? String(maxScans) : "∞";
+
+  useEffect(() => {
+    return () => {
+      if (guestLimitTimerRef.current) {
+        clearTimeout(guestLimitTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -616,9 +645,10 @@ export default function EventDashboardPage() {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     setGuestError("");
-    setGuestLimitWarning("");
+    closeGuestLimitModal();
     const processingStart = Date.now();
     let minimumProcessingMs = 10000 + Math.floor(Math.random() * 5001);
+    let stopLoadingImmediately = false;
     setUploadProcessing(true);
     const file = event.target.files?.[0];
     try {
@@ -682,15 +712,17 @@ export default function EventDashboardPage() {
         return;
       }
       if (isFree && parsed.length > maxGuests) {
-        setGuestLimitWarning(
+        openGuestLimitModal(
           `Free mode allows up to ${maxGuests} guests per event. This file has ${parsed.length} guests, so upload was stopped.`,
         );
+        stopLoadingImmediately = true;
         return;
       }
       if (isFree && totalGuestCount + parsed.length > maxGuests) {
-        setGuestLimitWarning(
+        openGuestLimitModal(
           `This upload would exceed the ${maxGuests}-guest free limit. Upgrade to continue.`,
         );
+        stopLoadingImmediately = true;
         return;
       }
       setUploadedSheetColumns(columns);
@@ -701,10 +733,12 @@ export default function EventDashboardPage() {
         err instanceof Error ? err.message : "Unable to process spreadsheet.";
       setGuestError(message);
     } finally {
-      const elapsed = Date.now() - processingStart;
-      const waitMs = Math.max(0, minimumProcessingMs - elapsed);
-      if (waitMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      if (!stopLoadingImmediately) {
+        const elapsed = Date.now() - processingStart;
+        const waitMs = Math.max(0, minimumProcessingMs - elapsed);
+        if (waitMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, waitMs));
+        }
       }
       setUploadProcessing(false);
       event.target.value = "";
@@ -1388,22 +1422,6 @@ export default function EventDashboardPage() {
             {guestError ? (
               <div className="text-sm text-red-500 mb-4">{guestError}</div>
             ) : null}
-            {guestLimitWarning ? (
-              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <div className="text-sm font-semibold text-amber-800 mb-2">
-                  Upload blocked in free mode
-                </div>
-                <div className="text-sm text-amber-700 mb-3">
-                  {guestLimitWarning}
-                </div>
-                <Link
-                  href={`/${params.org}/pricing`}
-                  className="inline-flex items-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
-                >
-                  View pricing
-                </Link>
-              </div>
-            ) : null}
             <div className="space-y-2">
               {filteredGuests.length === 0 ? (
                 <div className="text-sm text-slate-500">
@@ -1751,6 +1769,50 @@ export default function EventDashboardPage() {
                   />
                 </div>
               </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {guestLimitModalOpen ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0 bg-black/60"
+                onClick={closeGuestLimitModal}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                className="relative z-10 w-full max-w-[460px] bg-white border border-amber-200 rounded-3xl p-6 shadow-2xl"
+              >
+                <h3 className="text-lg font-bold text-amber-800 mb-2">Upload blocked in free mode</h3>
+                <p className="text-sm text-amber-700 mb-4">{guestLimitWarning}</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-2xl bg-amber-600 text-white text-sm font-semibold"
+                    onClick={closeGuestLimitModal}
+                  >
+                    OK
+                  </button>
+                  <Link
+                    href={`/${params.org}/pricing`}
+                    className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm font-semibold"
+                    onClick={closeGuestLimitModal}
+                  >
+                    View pricing
+                  </Link>
+                </div>
+                <p className="mt-3 text-xs text-slate-500">This message will close automatically in 10 seconds.</p>
+              </motion.div>
             </motion.div>
           ) : null}
         </AnimatePresence>

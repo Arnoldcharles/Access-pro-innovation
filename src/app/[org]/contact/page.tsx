@@ -43,7 +43,7 @@ export default function OrgContactPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-xs font-semibold text-blue-700 mb-4">
             Contact
           </div>
-          <h1 className="text-4xl md:text-6xl font-black leading-tight">Letâ€™s plan your next event together.</h1>
+          <h1 className="text-4xl md:text-6xl font-black leading-tight">Let's plan your next event together.</h1>
           <p className="text-slate-600 mt-4 max-w-2xl text-lg leading-relaxed">
             Tell us about your event size, timeline, and goals. Weâ€™ll map out the best AccessPro Innovation workflow for your team.
           </p>
