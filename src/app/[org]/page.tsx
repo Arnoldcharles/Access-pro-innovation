@@ -59,6 +59,7 @@ export default function OrgDashboardPage() {
   const pageSize = 4;
   const [eventsUnsub, setEventsUnsub] = useState<null | (() => void)>(null);
   const [orgs, setOrgs] = useState<Array<{ slug: string; name?: string }>>([]);
+  const [connectedDevices, setConnectedDevices] = useState(0);
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -178,6 +179,29 @@ export default function OrgDashboardPage() {
       );
       setEventsUnsub(() => unsubEvents);
 
+      const unsubConnections = onSnapshot(
+        collection(db, "orgs", slug, "deviceConnections"),
+        (snapshot) => {
+          const now = Date.now();
+          const activeWindowMs = 70 * 1000;
+          const count = snapshot.docs.filter((docSnap) => {
+            const data = docSnap.data() as { lastSeen?: { toMillis?: () => number }; online?: boolean };
+            if (data.online === false) return false;
+            const lastSeenMs =
+              typeof data.lastSeen?.toMillis === "function"
+                ? data.lastSeen.toMillis()
+                : 0;
+            return now - lastSeenMs <= activeWindowMs;
+          }).length;
+          setConnectedDevices(count);
+        },
+        (err) => {
+          const code = (err as { code?: string }).code;
+          if (code === "permission-denied") return;
+          console.error(err);
+        },
+      );
+
       const orgsQuery = query(
         collection(db, "orgs"),
         where("ownerId", "==", firebaseUser.uid),
@@ -202,6 +226,7 @@ export default function OrgDashboardPage() {
         },
       );
       return () => {
+        unsubConnections();
         unsubOrgs();
       };
     });
@@ -513,7 +538,7 @@ export default function OrgDashboardPage() {
           </Link>
         </motion.section>
 
-        <section className="grid md:grid-cols-3 gap-6">
+        <section className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
           {[
             {
               label: "Total events",
@@ -531,6 +556,11 @@ export default function OrgDashboardPage() {
               label: "Past events",
               value: String(pastEvents),
               note: pastEvents ? "Archived and searchable" : "No past events",
+            },
+            {
+              label: "Connected devices",
+              value: String(connectedDevices),
+              note: "Live org activity",
             },
           ].map((card) => (
             <div
