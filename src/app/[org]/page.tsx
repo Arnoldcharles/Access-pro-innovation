@@ -96,6 +96,7 @@ export default function OrgDashboardPage() {
   };
 
   useEffect(() => {
+    let liveOrgUnsub: null | (() => void) = null;
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         router.replace("/sign-in");
@@ -151,6 +152,44 @@ export default function OrgDashboardPage() {
       }
       setOrg({ ...orgData, plan: effectivePlan });
       setOrgPlan(effectivePlan);
+
+      liveOrgUnsub = onSnapshot(
+        doc(db, "orgs", slug),
+        async (liveSnap) => {
+          if (!liveSnap.exists()) {
+            router.replace("/onboarding");
+            return;
+          }
+          const liveData = liveSnap.data() as OrgData & {
+            deletedAt?: unknown;
+            blocked?: boolean;
+          };
+          if (liveData.deletedAt) {
+            router.replace(`/org-deleted?org=${slug}`);
+            return;
+          }
+          if (liveData.blocked) {
+            setBlockedOrgOpen(true);
+          }
+          let livePlan: "free" | "pro" = liveData.plan === "pro" ? "pro" : "free";
+          const liveExpiryMs = toMillis(liveData.proExpiresAt);
+          if (livePlan === "pro" && typeof liveExpiryMs === "number" && liveExpiryMs <= Date.now()) {
+            try {
+              await updateDoc(doc(db, "orgs", slug), { plan: "free", proExpiresAt: null });
+              livePlan = "free";
+            } catch (err) {
+              console.error(err);
+            }
+          }
+          setOrg((prev) => ({ ...(prev ?? {}), ...liveData, plan: livePlan }));
+          setOrgPlan(livePlan);
+        },
+        (err) => {
+          const code = (err as { code?: string }).code;
+          if (code === "permission-denied") return;
+          console.error(err);
+        },
+      );
       if (typeof window !== "undefined") {
         const introKey = `ap:intro:${firebaseUser.uid}:${slug}`;
         const introEverKey = `ap:intro-ever:${firebaseUser.uid}:${slug}`;
@@ -266,6 +305,7 @@ export default function OrgDashboardPage() {
     });
     return () => {
       unsub();
+      if (liveOrgUnsub) liveOrgUnsub();
       if (eventsUnsub) eventsUnsub();
       if (introTimerRef.current) {
         clearTimeout(introTimerRef.current);

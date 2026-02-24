@@ -249,6 +249,7 @@ export default function EventDashboardPage() {
   }, []);
 
   useEffect(() => {
+    let liveOrgUnsub: null | (() => void) = null;
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         router.replace("/sign-in");
@@ -298,6 +299,36 @@ export default function EventDashboardPage() {
       }
       setOrgName(orgData.name ?? "");
       setOrgPlan(effectivePlan);
+      liveOrgUnsub = onSnapshot(
+        doc(db, "orgs", orgSlug),
+        async (liveSnap) => {
+          if (!liveSnap.exists()) {
+            router.replace("/onboarding");
+            return;
+          }
+          const liveData = liveSnap.data() as {
+            name?: string;
+            plan?: "free" | "pro";
+            proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
+            blocked?: boolean;
+          };
+          if (liveData.blocked) {
+            setBlockedOrgOpen(true);
+          }
+          let livePlan: "free" | "pro" = liveData.plan === "pro" ? "pro" : "free";
+          const liveExpiryMs = toMillis(liveData.proExpiresAt);
+          if (livePlan === "pro" && typeof liveExpiryMs === "number" && liveExpiryMs <= Date.now()) {
+            try {
+              await updateDoc(doc(db, "orgs", orgSlug), { plan: "free", proExpiresAt: null });
+              livePlan = "free";
+            } catch (err) {
+              console.error(err);
+            }
+          }
+          setOrgName(liveData.name ?? "");
+          setOrgPlan(livePlan);
+        },
+      );
       const eventSnap = await getDoc(
         doc(db, "orgs", orgSlug, "events", eventSlug),
       );
@@ -346,7 +377,10 @@ export default function EventDashboardPage() {
       setLoading(false);
       return () => unsubGuests();
     });
-    return () => unsub();
+    return () => {
+      unsub();
+      if (liveOrgUnsub) liveOrgUnsub();
+    };
   }, [params, router]);
 
   const easeOut = cubicBezier(0.16, 1, 0.3, 1);

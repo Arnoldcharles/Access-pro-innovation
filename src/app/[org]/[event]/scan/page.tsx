@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
-import { collection, doc, getDoc, getDocs, increment, query, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, increment, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 type ScanResult = {
@@ -43,6 +43,7 @@ export default function ScanPage() {
   const easeOut = cubicBezier(0.16, 1, 0.3, 1);
 
   useEffect(() => {
+    let liveOrgUnsub: null | (() => void) = null;
     const checkRole = async () => {
       const orgSlug = params?.org;
       if (!orgSlug) return;
@@ -83,11 +84,37 @@ export default function ScanPage() {
             }
           }
           setOrgPlan(effectivePlan);
+          liveOrgUnsub = onSnapshot(doc(db, 'orgs', orgSlug), async (liveSnap) => {
+            if (!liveSnap.exists()) {
+              router.replace('/onboarding');
+              return;
+            }
+            const liveData = liveSnap.data() as {
+              plan?: 'free' | 'pro';
+              blocked?: boolean;
+              proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
+            };
+            if (liveData.blocked) {
+              setBlockedOrgOpen(true);
+            }
+            let livePlan: 'free' | 'pro' = liveData.plan === 'pro' ? 'pro' : 'free';
+            const liveExpiryMs = toMillis(liveData.proExpiresAt);
+            if (livePlan === 'pro' && typeof liveExpiryMs === 'number' && liveExpiryMs <= Date.now()) {
+              try {
+                await updateDoc(doc(db, 'orgs', orgSlug), { plan: 'free', proExpiresAt: null });
+                livePlan = 'free';
+              } catch (err) {
+                console.error(err);
+              }
+            }
+            setOrgPlan(livePlan);
+          });
         }
       }
     };
     checkRole();
     return () => {
+      if (liveOrgUnsub) liveOrgUnsub();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
