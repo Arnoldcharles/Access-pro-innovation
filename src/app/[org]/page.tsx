@@ -23,6 +23,7 @@ type OrgData = {
   name?: string;
   slug?: string;
   plan?: 'free' | 'pro';
+  proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
   ownerId?: string;
   blocked?: boolean;
 };
@@ -30,6 +31,16 @@ type OrgData = {
 type UserData = {
   name?: string;
   orgSlug?: string;
+};
+
+const toMillis = (
+  value?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null,
+) => {
+  if (!value) return null;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  return null;
 };
 
 export default function OrgDashboardPage() {
@@ -128,8 +139,18 @@ export default function OrgDashboardPage() {
       }
 
       const orgData = orgSnap.data() as OrgData;
-      setOrg(orgData);
-      setOrgPlan(orgData.plan === "pro" ? "pro" : "free");
+      let effectivePlan: "free" | "pro" = orgData.plan === "pro" ? "pro" : "free";
+      const expiryMs = toMillis(orgData.proExpiresAt);
+      if (effectivePlan === "pro" && typeof expiryMs === "number" && expiryMs <= Date.now()) {
+        try {
+          await updateDoc(doc(db, "orgs", slug), { plan: "free", proExpiresAt: null });
+          effectivePlan = "free";
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      setOrg({ ...orgData, plan: effectivePlan });
+      setOrgPlan(effectivePlan);
       if (typeof window !== "undefined") {
         const introKey = `ap:intro:${firebaseUser.uid}:${slug}`;
         const introEverKey = `ap:intro-ever:${firebaseUser.uid}:${slug}`;

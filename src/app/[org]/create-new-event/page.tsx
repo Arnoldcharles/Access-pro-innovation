@@ -13,6 +13,7 @@ import {
   increment,
   query,
   serverTimestamp,
+  updateDoc,
   writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -24,6 +25,16 @@ const slugify = (value: string) =>
     .replace(/['"]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '');
+
+const toMillis = (
+  value?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null,
+) => {
+  if (!value) return null;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.toDate === 'function') return value.toDate().getTime();
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  return null;
+};
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -59,9 +70,23 @@ export default function CreateEventPage() {
         router.replace('/onboarding');
         return;
       }
-      const orgData = orgSnap.data() as { name?: string; plan?: 'free' | 'pro' };
+      const orgData = orgSnap.data() as {
+        name?: string;
+        plan?: 'free' | 'pro';
+        proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
+      };
       setOrgName(orgData.name ?? '');
-      setOrgPlan(orgData.plan === 'pro' ? 'pro' : 'free');
+      let effectivePlan: 'free' | 'pro' = orgData.plan === 'pro' ? 'pro' : 'free';
+      const expiryMs = toMillis(orgData.proExpiresAt);
+      if (effectivePlan === 'pro' && typeof expiryMs === 'number' && expiryMs <= Date.now()) {
+        try {
+          await updateDoc(doc(db, 'orgs', orgSlug), { plan: 'free', proExpiresAt: null });
+          effectivePlan = 'free';
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      setOrgPlan(effectivePlan);
       const eventsSnap = await getDocs(query(collection(db, 'orgs', orgSlug, 'events')));
       setEventCount(eventsSnap.docs.length);
       setLoading(false);

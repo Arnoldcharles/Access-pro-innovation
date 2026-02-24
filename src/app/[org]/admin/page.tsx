@@ -21,6 +21,19 @@ type OrgItem = {
   name?: string;
   ownerId?: string;
   plan?: "free" | "pro";
+  proExpiresAt?: { toDate?: () => Date; seconds?: number };
+};
+
+const formatExpiry = (value?: { toDate?: () => Date; seconds?: number }) => {
+  if (!value) return "No expiry set";
+  const date =
+    typeof value.toDate === "function"
+      ? value.toDate()
+      : typeof value.seconds === "number"
+        ? new Date(value.seconds * 1000)
+        : null;
+  if (!date) return "No expiry set";
+  return date.toLocaleString();
 };
 
 export default function AdminPage() {
@@ -29,6 +42,7 @@ export default function AdminPage() {
   const [uid, setUid] = useState("");
   const [users, setUsers] = useState<UserItem[]>([]);
   const [orgs, setOrgs] = useState<OrgItem[]>([]);
+  const [proDurationByOrg, setProDurationByOrg] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -107,9 +121,17 @@ export default function AdminPage() {
       }));
   }, [users, orgsByOwner, search]);
 
-  const toggleOrgPlan = async (orgId: string, current: "free" | "pro" | undefined) => {
-    const nextPlan = current === "pro" ? "free" : "pro";
-    await updateDoc(doc(db, "orgs", orgId), { plan: nextPlan });
+  const setOrgFree = async (orgId: string) => {
+    await updateDoc(doc(db, "orgs", orgId), { plan: "free", proExpiresAt: null });
+  };
+
+  const setOrgProDuration = async (orgId: string, days: number) => {
+    const now = Date.now();
+    const expiresAt = new Date(now + days * 24 * 60 * 60 * 1000);
+    await updateDoc(doc(db, "orgs", orgId), {
+      plan: "pro",
+      proExpiresAt: expiresAt,
+    });
   };
 
   const toggleOrgBlocked = async (orgId: string, current?: boolean) => {
@@ -222,20 +244,45 @@ export default function AdminPage() {
                           <div>
                             <div className="font-semibold">{org.name ?? org.id}</div>
                             <div className="text-xs text-slate-500">/{org.id}</div>
+                            <div className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">
+                              Pro expiry: {formatExpiry(org.proExpiresAt)}
+                            </div>
                             {(org as { blocked?: boolean }).blocked ? (
                               <div className="mt-1 text-[10px] uppercase tracking-widest text-rose-500">Blocked</div>
                             ) : null}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className={`px-3 py-2 rounded-xl text-xs font-semibold ${
-                                org.plan === "pro" ? "bg-emerald-600 text-white" : "bg-amber-100 text-amber-700"
-                              }`}
-                              onClick={() => toggleOrgPlan(org.id, org.plan)}
-                            >
-                              {org.plan === "pro" ? "Set Free" : "Set Pro"}
-                            </button>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="rounded-xl border border-slate-200 px-2 py-2 text-xs text-slate-700"
+                                value={String(proDurationByOrg[org.id] ?? 30)}
+                                onChange={(event) =>
+                                  setProDurationByOrg((prev) => ({
+                                    ...prev,
+                                    [org.id]: Number(event.target.value),
+                                  }))
+                                }
+                              >
+                                <option value="7">7 days</option>
+                                <option value="30">30 days</option>
+                                <option value="90">90 days</option>
+                                <option value="365">365 days</option>
+                              </select>
+                              <button
+                                type="button"
+                                className="px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white"
+                                onClick={() => setOrgProDuration(org.id, proDurationByOrg[org.id] ?? 30)}
+                              >
+                                Set Pro
+                              </button>
+                              <button
+                                type="button"
+                                className="px-3 py-2 rounded-xl text-xs font-semibold bg-amber-100 text-amber-700"
+                                onClick={() => setOrgFree(org.id)}
+                              >
+                                Set Free
+                              </button>
+                            </div>
                             <button
                               type="button"
                               className={`px-3 py-2 rounded-xl text-xs font-semibold ${

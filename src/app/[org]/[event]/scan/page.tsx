@@ -12,6 +12,16 @@ type ScanResult = {
   message: string;
 };
 
+const toMillis = (
+  value?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null,
+) => {
+  if (!value) return null;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.toDate === 'function') return value.toDate().getTime();
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  return null;
+};
+
 export default function ScanPage() {
   const router = useRouter();
   const params = useParams<{ org: string; event: string }>();
@@ -52,13 +62,27 @@ export default function ScanPage() {
       if (orgSlug) {
         const orgSnap = await getDoc(doc(db, 'orgs', orgSlug));
         if (orgSnap.exists()) {
-          const orgData = orgSnap.data() as { plan?: 'free' | 'pro'; blocked?: boolean };
+          const orgData = orgSnap.data() as {
+            plan?: 'free' | 'pro';
+            blocked?: boolean;
+            proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
+          };
           if (orgData.blocked) {
             setBlockedOrgOpen(true);
             setTimeout(() => router.replace('/onboarding'), 1200);
             return;
           }
-          setOrgPlan(orgData.plan === 'pro' ? 'pro' : 'free');
+          let effectivePlan: 'free' | 'pro' = orgData.plan === 'pro' ? 'pro' : 'free';
+          const expiryMs = toMillis(orgData.proExpiresAt);
+          if (effectivePlan === 'pro' && typeof expiryMs === 'number' && expiryMs <= Date.now()) {
+            try {
+              await updateDoc(doc(db, 'orgs', orgSlug), { plan: 'free', proExpiresAt: null });
+              effectivePlan = 'free';
+            } catch (err) {
+              console.error(err);
+            }
+          }
+          setOrgPlan(effectivePlan);
         }
       }
     };

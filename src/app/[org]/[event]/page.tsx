@@ -155,6 +155,16 @@ const deserializeSheetLayout = (value: unknown): SheetLayout | null => {
   return { columns, blocks, rows };
 };
 
+const toMillis = (
+  value?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null,
+) => {
+  if (!value) return null;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  return null;
+};
+
 export default function EventDashboardPage() {
   const router = useRouter();
   const params = useParams<{ org: string; event: string }>();
@@ -266,6 +276,7 @@ export default function EventDashboardPage() {
       const orgData = orgSnap.data() as {
         name?: string;
         plan?: "free" | "pro";
+        proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
         blocked?: boolean;
       };
       if (orgData.blocked) {
@@ -275,8 +286,18 @@ export default function EventDashboardPage() {
         }, 1200);
         return;
       }
+      let effectivePlan: "free" | "pro" = orgData.plan === "pro" ? "pro" : "free";
+      const expiryMs = toMillis(orgData.proExpiresAt);
+      if (effectivePlan === "pro" && typeof expiryMs === "number" && expiryMs <= Date.now()) {
+        try {
+          await updateDoc(doc(db, "orgs", orgSlug), { plan: "free", proExpiresAt: null });
+          effectivePlan = "free";
+        } catch (err) {
+          console.error(err);
+        }
+      }
       setOrgName(orgData.name ?? "");
-      setOrgPlan(orgData.plan === "pro" ? "pro" : "free");
+      setOrgPlan(effectivePlan);
       const eventSnap = await getDoc(
         doc(db, "orgs", orgSlug, "events", eventSlug),
       );
