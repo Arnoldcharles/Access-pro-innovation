@@ -1,4 +1,5 @@
 import OrgPresenceTracker from "@/components/OrgPresenceTracker";
+import OrgPlanExpiryNotice from "@/components/OrgPlanExpiryNotice";
 
 export default function OrgLayout({
   children,
@@ -8,6 +9,7 @@ export default function OrgLayout({
   return (
     <>
       <OrgPresenceTracker />
+      <OrgPlanExpiryNotice />
       {children}
     </>
   );
