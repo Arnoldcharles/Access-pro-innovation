@@ -174,6 +174,8 @@ export default function EventDashboardPage() {
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestError, setGuestError] = useState("");
+  const [guestNotice, setGuestNotice] = useState("");
+  const [copyToast, setCopyToast] = useState("");
   const [guestLimitWarning, setGuestLimitWarning] = useState("");
   const [guestLimitModalOpen, setGuestLimitModalOpen] = useState(false);
   const [guestSaving, setGuestSaving] = useState(false);
@@ -195,6 +197,7 @@ export default function EventDashboardPage() {
   const [inviteStatus, setInviteStatus] = useState("");
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
+  const [downloadingGuestCard, setDownloadingGuestCard] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardGuest, setCardGuest] = useState<Guest | null>(null);
@@ -825,6 +828,16 @@ export default function EventDashboardPage() {
     setInviteOpen(false);
   };
 
+  const showGuestNotice = (message: string) => {
+    setGuestNotice(message);
+    setTimeout(() => setGuestNotice(""), 2500);
+  };
+
+  const showCopyToast = (message: string) => {
+    setCopyToast(message);
+    setTimeout(() => setCopyToast(""), 1800);
+  };
+
   const createToken = () => {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto)
       return crypto.randomUUID();
@@ -932,6 +945,63 @@ export default function EventDashboardPage() {
       setInviteStatus(message);
     } finally {
       setInviteLoading(false);
+    }
+  };
+
+  const handleCopyGuestInviteLink = async (guest: Guest) => {
+    const orgSlug = params?.org;
+    const eventSlug = params?.event;
+    if (!orgSlug || !eventSlug) return;
+    if (isFree) {
+      setUpgradeOpen(true);
+      return;
+    }
+    try {
+      const token = createToken();
+      const linkPath = `/${orgSlug}/${eventSlug}/invite/${token}`;
+      const fullLink =
+        typeof window !== "undefined"
+          ? `${window.location.origin}${linkPath}`
+          : linkPath;
+      const now = serverTimestamp();
+      const batch = writeBatch(db);
+      const invitesRef = collection(
+        db,
+        "orgs",
+        orgSlug,
+        "events",
+        eventSlug,
+        "invites",
+      );
+      batch.set(doc(invitesRef, token), {
+        token,
+        guestName: guest.name,
+        guestPhone: guest.phone,
+        guestEmail: guest.email,
+        eventName: eventData?.name ?? "",
+        eventDate: eventData?.date ?? "",
+        eventLocation: eventData?.location ?? "",
+        message: buildInviteMessage(guest.name),
+        imageDataUrl: eventData?.imageDataUrl ?? "",
+        qrX: eventData?.qrX ?? 0.1,
+        qrY: eventData?.qrY ?? 0.1,
+        qrSize: eventData?.qrSize ?? 96,
+        nameX: eventData?.nameX ?? 0.1,
+        nameY: eventData?.nameY ?? 0.3,
+        nameColor: eventData?.nameColor ?? "#111827",
+        nameSize: eventData?.nameSize ?? 16,
+        nameFont: eventData?.nameFont ?? "Arial, sans-serif",
+        nameBg: eventData?.nameBg !== false,
+        createdAt: now,
+      });
+      await batch.commit();
+      await navigator.clipboard.writeText(fullLink);
+      showGuestNotice("Guest invite link copied.");
+      showCopyToast("Link copied successfully");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to copy guest invite link.";
+      setGuestError(message);
     }
   };
 
@@ -1078,6 +1148,99 @@ export default function EventDashboardPage() {
       const message =
         err instanceof Error ? err.message : "Unable to check in guest";
       setGuestError(message);
+    }
+  };
+
+  const loadImage = (src: string) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = src;
+    });
+
+  const handleDownloadGuestCard = async (guest: Guest) => {
+    if (!eventData) return;
+    setDownloadingGuestCard(true);
+    setGuestError("");
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas is not supported in this browser.");
+
+      const bgSrc = eventData.imageDataUrl ?? "";
+      let width = 1080;
+      let height = 1080;
+      if (bgSrc) {
+        const bg = await loadImage(bgSrc);
+        width = bg.naturalWidth || width;
+        height = bg.naturalHeight || height;
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(bg, 0, 0, width, height);
+      } else {
+        canvas.width = width;
+        canvas.height = height;
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      if (!isFree) {
+        const qrSize = eventData.qrSize ?? 96;
+        const qrX = (eventData.qrX ?? 0.1) * width - qrSize / 2;
+        const qrY = (eventData.qrY ?? 0.1) * height - qrSize / 2;
+        const qrData = `${guest.name}|${params.org}/${params.event}`;
+        const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(qrData)}`;
+        try {
+          const qr = await loadImage(qrSrc);
+          ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
+        } catch {
+          // QR download fallback: continue without QR image.
+        }
+      }
+
+      const nameX = (eventData.nameX ?? 0.1) * width;
+      const nameY = (eventData.nameY ?? 0.3) * height;
+      const nameSize = eventData.nameSize ?? 16;
+      const nameFont = eventData.nameFont ?? "Arial, sans-serif";
+      const nameColor = eventData.nameColor ?? "#111827";
+      const guestName = guest.name || "Guest";
+
+      ctx.font = `600 ${nameSize}px ${nameFont}`;
+      const textWidth = ctx.measureText(guestName).width;
+      if (eventData.nameBg !== false) {
+        const padX = 14;
+        const padY = 10;
+        const boxX = nameX - textWidth / 2 - padX;
+        const boxY = nameY - nameSize - padY / 2;
+        const boxW = textWidth + padX * 2;
+        const boxH = nameSize + padY * 2;
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 12);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = nameColor;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(guestName, nameX, nameY);
+
+      const anchor = document.createElement("a");
+      const safeName = guestName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      anchor.href = canvas.toDataURL("image/png");
+      anchor.download = `${safeName || "guest"}-card.png`;
+      anchor.click();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to download guest image card";
+      setGuestError(message);
+    } finally {
+      setDownloadingGuestCard(false);
     }
   };
 
@@ -1422,6 +1585,9 @@ export default function EventDashboardPage() {
             {guestError ? (
               <div className="text-sm text-red-500 mb-4">{guestError}</div>
             ) : null}
+            {guestNotice ? (
+              <div className="text-sm text-emerald-600 mb-4">{guestNotice}</div>
+            ) : null}
             {guestLimitWarning ? (
               <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <div className="text-sm font-semibold text-amber-800 mb-2">
@@ -1695,6 +1861,32 @@ export default function EventDashboardPage() {
                                       <button
                                         type="button"
                                         className="w-full text-left px-4 py-2 hover:bg-slate-50"
+                                        onClick={() => {
+                                          setMenuOpenId(null);
+                                          void handleCopyGuestInviteLink(guest);
+                                        }}
+                                      >
+                                        Copy guest invite link
+                                      </button>
+                                    ) : null}
+                                    {!isPending && !isFree ? (
+                                      <button
+                                        type="button"
+                                        className="w-full text-left px-4 py-2 hover:bg-slate-50"
+                                        onClick={() => {
+                                          setMenuOpenId(null);
+                                          void handleDownloadGuestCard(guest);
+                                        }}
+                                      >
+                                        {downloadingGuestCard
+                                          ? "Preparing download..."
+                                          : "Download guest image card"}
+                                      </button>
+                                    ) : null}
+                                    {!isPending ? (
+                                      <button
+                                        type="button"
+                                        className="w-full text-left px-4 py-2 hover:bg-slate-50"
                                         onClick={() => startEdit(guest)}
                                       >
                                         Edit guest
@@ -1737,6 +1929,20 @@ export default function EventDashboardPage() {
             </div>
           </div>
         </section>
+
+        <AnimatePresence>
+          {copyToast ? (
+            <motion.div
+              className="fixed top-6 right-6 z-[70] rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-xl"
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+            >
+              {copyToast}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         <AnimatePresence>
           {uploadProcessing ? (
