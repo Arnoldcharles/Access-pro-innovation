@@ -1559,7 +1559,7 @@ export default function EventDashboardPage() {
                 onClick={handleSaveGuests}
               >
                 {guestSaving
-                  ? "Saving..."
+                  ? "Saving files..."
                   : `Save ${pendingGuests.length} guest${pendingGuests.length === 1 ? "" : "s"}`}
               </button>
               {isFree ? (
@@ -1931,15 +1931,66 @@ export default function EventDashboardPage() {
         </section>
 
         <AnimatePresence>
+          {guestSaving ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              />
+              <motion.section
+                initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { duration: 0.28, ease: easeOut },
+                }}
+                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.18 } }}
+                className="relative z-10 w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+              >
+                <h3 className="text-lg font-bold text-slate-900">Saving guest files</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  Please wait while we save your guest list and table layout.
+                </p>
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin" />
+                  <div className="text-sm font-medium text-blue-700">Saving...</div>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
+                  />
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {copyToast ? (
             <motion.div
-              className="fixed top-6 right-6 z-[70] rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-xl"
-              initial={{ opacity: 0, y: -8, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: 0.18 }}
+              className="fixed top-6 right-6 z-[70] flex items-center gap-2 rounded-2xl border border-emerald-300/40 bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-2xl shadow-emerald-900/35"
+              initial={{ opacity: 0, y: -16, scale: 0.92, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -12, scale: 0.96, filter: "blur(2px)" }}
+              transition={{ type: "spring", stiffness: 420, damping: 30, mass: 0.7 }}
             >
-              {copyToast}
+              <motion.span
+                className="h-2 w-2 rounded-full bg-white"
+                animate={{ scale: [1, 1.35, 1], opacity: [0.85, 1, 0.85] }}
+                transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <span>{copyToast}</span>
             </motion.div>
           ) : null}
         </AnimatePresence>
