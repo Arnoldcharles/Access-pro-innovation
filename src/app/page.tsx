@@ -206,12 +206,12 @@ export default function HomePage() {
               </ul>
             </div>
             <img
-              src="/accessproimages/InShot_20251230_133959882.jpg.jpeg"
+              src="/accessproimages/InShot_20251230_130942088.jpg.jpeg"
               alt="Event planning desk"
               className="h-72 w-full rounded-2xl object-cover"
             />
             <img
-              src="/accessproimages/InShot_20251230_134517874.jpg.jpeg"
+              src="/accessproimages/InShot_20251230_133959882.jpg.jpeg"
               alt="Attendee crowd"
               className="h-72 w-full rounded-2xl object-cover"
             />
