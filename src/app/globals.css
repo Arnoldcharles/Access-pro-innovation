@@ -247,6 +247,27 @@ select {
   animation: bg-pan 20s ease infinite;
 }
 
+/* original-theme overlay animation */
+@keyframes bg-pan-original {
+  0% {
+    background-position: 20% 20%;
+  }
+  50% {
+    background-position: 80% 80%;
+  }
+  100% {
+    background-position: 20% 20%;
+  }
+}
+
+.animate-bg-pan-original {
+  animation: bg-pan-original 15s ease infinite;
+  background: radial-gradient(circle at 20% 10%, rgba(59,130,246,0.3), transparent 30%),
+              radial-gradient(circle at 80% 20%, rgba(34,211,238,0.3), transparent 30%),
+              linear-gradient(160deg, #070b1a 0%, #0a1737 50%, #111f44 100%);
+  background-size: 200% 200%;
+}
+
 @keyframes move-blur {
   0%, 100% {
     transform: translate(0,0) scale(1);

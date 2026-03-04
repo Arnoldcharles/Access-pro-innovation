@@ -89,9 +89,11 @@ export default function HomePage() {
   return (
     <main className="page-transition bg-[#f3f5f8] text-slate-900">
       <section ref={heroRef} className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.3),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(34,211,238,0.3),transparent_30%),linear-gradient(160deg,#070b1a_0%,#0a1737_50%,#111f44_100%)] px-4 pb-14 pt-16 sm:px-8">
+        {/* subtle animated overlay matching original colors */}
+        <div className="absolute inset-0 animate-bg-pan-original opacity-20"></div>
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl"></div>
-          <div className="absolute -right-40 -bottom-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
+          <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl animate-move-blur"></div>
+          <div className="absolute -right-40 -bottom-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl animate-move-blur"></div>
         </div>
         <div className="relative mx-auto w-full max-w-6xl">
           <div className="mx-auto mt-16 max-w-3xl text-center">
