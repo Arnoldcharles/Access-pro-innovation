@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, RefObject } from "react";
 
-export function useScrollAnimation(): [RefObject<HTMLDivElement>, string] {
+export function useScrollAnimation(): [RefObject<HTMLDivElement | null>, string] {
   const ref = useRef<HTMLDivElement>(null);
   const [animated, setAnimated] = useState(false);
 
