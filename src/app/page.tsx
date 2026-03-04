@@ -68,7 +68,17 @@ const tools = [
 
 export default function HomePage() {
   const [isHeroInView, setIsHeroInView] = useState(true);
+  const [offsetY, setOffsetY] = useState(0);
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // parallax scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      setOffsetY(window.scrollY);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -87,10 +97,21 @@ export default function HomePage() {
 
   return (
     <main className="page-transition bg-[#f3f5f8] text-slate-900">
-      <section ref={heroRef} className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.3),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(34,211,238,0.3),transparent_30%),linear-gradient(160deg,#070b1a_0%,#0a1737_50%,#111f44_100%)] px-4 pb-14 pt-16 sm:px-8">
+      <section ref={heroRef} className="relative overflow-hidden px-4 pb-14 pt-16 sm:px-8">
+        {/* animated multicolor blurred background with parallax */}
+        <div
+          className="absolute inset-0 animate-bg-pan bg-linear-to-br from-indigo-500 via-pink-500 to-green-300 bg-size-[200%_200%] blur-3xl opacity-30"
+          style={{ transform: `translateY(${offsetY * 0.05}px)` }}
+        />
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl"></div>
-          <div className="absolute -right-40 -bottom-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
+          <div
+            className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl animate-move-blur"
+            style={{ transform: `translateY(${offsetY * 0.1}px)` }}
+          ></div>
+          <div
+            className="absolute -right-40 -bottom-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl animate-move-blur"
+            style={{ transform: `translateY(${offsetY * -0.1}px)` }}
+          ></div>
         </div>
         <div className="relative mx-auto w-full max-w-6xl">
           <div className="mx-auto mt-16 max-w-3xl text-center">
@@ -128,16 +149,18 @@ export default function HomePage() {
       </section>
 
       <section className="bg-white px-4 py-5 sm:px-8">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-          {partnerNames.map((partner, idx) => (
-            <div
-              key={partner}
-              className="animate-fade-in-up rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-slate-500 hover:border-cyan-300 hover:bg-cyan-50 transition-all duration-300"
-              style={{ animationDelay: `${idx * 50}ms` }}
-            >
-              {partner}
-            </div>
-          ))}
+        <div className="mx-auto max-w-6xl">
+          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide" style={{ scrollBehavior: "smooth" }}>
+            {partnerNames.map((partner, idx) => (
+              <div
+                key={partner}
+                className="animate-fade-in-up shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs font-semibold text-slate-500 hover:border-cyan-300 hover:bg-cyan-50 transition-all duration-300 whitespace-nowrap w-max"
+                style={{ animationDelay: `${idx * 50}ms` }}
+              >
+                {partner}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

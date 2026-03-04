@@ -219,3 +219,43 @@ textarea,
 select {
   @apply transition-all duration-200;
 }
+
+/* Scrollbar utilities */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari and Opera */
+}
+
+/* Background animation keyframes */
+@keyframes bg-pan {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-bg-pan {
+  animation: bg-pan 20s ease infinite;
+}
+
+@keyframes move-blur {
+  0%, 100% {
+    transform: translate(0,0) scale(1);
+  }
+  50% {
+    transform: translate(15px,-15px) scale(1.1);
+  }
+}
+
+.animate-move-blur {
+  animation: move-blur 10s ease-in-out infinite;
+}
