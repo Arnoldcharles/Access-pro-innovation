@@ -100,7 +100,7 @@ export default function HomePage() {
       <section ref={heroRef} className="relative overflow-hidden px-4 pb-14 pt-16 sm:px-8">
         {/* animated multicolor blurred background with parallax */}
         <div
-          className="absolute inset-0 animate-bg-pan bg-linear-to-br from-indigo-500 via-pink-500 to-green-300 bg-size-[200%_200%] blur-3xl opacity-30"
+          className="absolute inset-0 animate-bg-pan bg-linear-to-br from-sky-600 via-cyan-400 to-blue-900 bg-size-[200%_200%] blur-3xl opacity-20"
           style={{ transform: `translateY(${offsetY * 0.05}px)` }}
         />
         <div className="absolute inset-0 overflow-hidden">
