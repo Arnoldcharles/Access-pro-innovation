@@ -11,6 +11,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import TypingAnimation from "@/components/TypingAnimation";
 
 const partnerNames = [
   "Bankysu Events",
@@ -73,7 +74,7 @@ export default function HomePage() {
               Event Management Platform
             </p>
             <h1 className="mt-5 text-4xl font-black leading-tight text-white sm:text-5xl md:text-6xl">
-              YOUR <span className="text-cyan-300">PLATFORM</span> FOR SEAMLESS EVENTS
+              YOUR <TypingAnimation words={["PLATFORM", "SOLUTION", "SYSTEM", "TOOL", "APP", "HUB"]} /> FOR SEAMLESS EVENTS
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-sm text-white/80 sm:text-base">
               The modern way to manage registrations, gate scanning, and attendee flow without stress.

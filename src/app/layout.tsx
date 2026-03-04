@@ -23,7 +23,10 @@ const organizationJsonLd = {
     addressLocality: "Lagos",
     addressCountry: "NG",
   },
-  sameAs: ["https://www.facebook.com/share/18LBPkeZC6/?mibextid=wwXIfr", "https://www.instagram.com/accesspro_innovation?igsh=YmRxZ3U2dGhsb2Qx&utm_source=qr"],
+  sameAs: [
+    "https://www.facebook.com/share/18LBPkeZC6/?mibextid=wwXIfr",
+    "https://www.instagram.com/accesspro_innovation?igsh=YmRxZ3U2dGhsb2Qx&utm_source=qr",
+  ],
 };
 
 export const metadata: Metadata = {
@@ -62,7 +65,9 @@ export default function RootLayout({
       <body className={`${plusJakartaSans.variable} antialiased`}>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
         />
         <ConditionalSiteNav />
         {children}

@@ -829,7 +829,6 @@ export default function OrgDashboardPage() {
             <div className="space-y-3 text-sm text-slate-600">
               <div>Upload today's guest list</div>
               <div>Assign staff to scan lanes</div>
-              <div>Enable SMS reminders</div>
             </div>
           </div>
         </section>
