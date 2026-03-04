@@ -68,17 +68,8 @@ const tools = [
 
 export default function HomePage() {
   const [isHeroInView, setIsHeroInView] = useState(true);
-  const [offsetY, setOffsetY] = useState(0);
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // parallax scroll listener
-  useEffect(() => {
-    const handleScroll = () => {
-      setOffsetY(window.scrollY);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -97,21 +88,10 @@ export default function HomePage() {
 
   return (
     <main className="page-transition bg-[#f3f5f8] text-slate-900">
-      <section ref={heroRef} className="relative overflow-hidden px-4 pb-14 pt-16 sm:px-8">
-        {/* animated multicolor blurred background with parallax */}
-        <div
-          className="absolute inset-0 animate-bg-pan bg-linear-to-br from-sky-600 via-cyan-400 to-blue-900 bg-size-[200%_200%] blur-3xl opacity-20"
-          style={{ transform: `translateY(${offsetY * 0.05}px)` }}
-        />
+      <section ref={heroRef} className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.3),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(34,211,238,0.3),transparent_30%),linear-gradient(160deg,#070b1a_0%,#0a1737_50%,#111f44_100%)] px-4 pb-14 pt-16 sm:px-8">
         <div className="absolute inset-0 overflow-hidden">
-          <div
-            className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl animate-move-blur"
-            style={{ transform: `translateY(${offsetY * 0.1}px)` }}
-          ></div>
-          <div
-            className="absolute -right-40 -bottom-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl animate-move-blur"
-            style={{ transform: `translateY(${offsetY * -0.1}px)` }}
-          ></div>
+          <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl"></div>
+          <div className="absolute -right-40 -bottom-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"></div>
         </div>
         <div className="relative mx-auto w-full max-w-6xl">
           <div className="mx-auto mt-16 max-w-3xl text-center">
