@@ -904,8 +904,33 @@ export default function EventDashboardPage() {
     message: string,
     link: string,
   ) => {
-    // Placeholder only. Replace with WhatsApp Business API/Twilio integration.
-    console.log("Send WhatsApp to", phone, message, link);
+    const user = auth.currentUser;
+    if (!user) throw new Error("Not signed in");
+    const token = await user.getIdToken();
+    const fullLink =
+      typeof window !== "undefined" && link.startsWith("/")
+        ? `${window.location.origin}${link}`
+        : link;
+
+    const res = await fetch("/api/whatsapp/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        to: phone,
+        text: message,
+        link: fullLink,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      throw new Error(data?.error ?? `WhatsApp send failed (${res.status})`);
+    }
   };
 
   const handleSendInvites = async () => {
@@ -954,7 +979,7 @@ export default function EventDashboardPage() {
         setInviteLink(link);
         await sendWhatsAppPlaceholder(inviteTarget.phone, inviteMessage, link);
         setInviteStatus(
-          "Invite created and queued for WhatsApp (placeholder).",
+          "Invite created and sent via WhatsApp.",
         );
       }
 
@@ -964,18 +989,31 @@ export default function EventDashboardPage() {
           setInviteLoading(false);
           return;
         }
-        guests.forEach((guest) => {
-          const token = createToken();
-          const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
-          batch.set(doc(invitesRef, token), {
-            token,
-            guestName: guest.name,
-            guestPhone: guest.phone,
-            guestEmail: guest.email,
+        const inviteItems = guests
+          .map((guest) => {
+            const token = createToken();
+            const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
+            return {
+              token,
+              link,
+              phone: guest.phone,
+              message: buildInviteMessage(guest.name),
+              guestName: guest.name,
+              guestEmail: guest.email,
+            };
+          });
+        const sendItems = inviteItems.filter((item) => Boolean(item.phone));
+
+        inviteItems.forEach((item) => {
+          batch.set(doc(invitesRef, item.token), {
+            token: item.token,
+            guestName: item.guestName,
+            guestPhone: item.phone,
+            guestEmail: item.guestEmail,
             eventName: eventData?.name ?? "",
             eventDate: eventData?.date ?? "",
             eventLocation: eventData?.location ?? "",
-            message: buildInviteMessage(guest.name),
+            message: item.message,
             imageDataUrl: eventData?.imageDataUrl ?? "",
             qrX: eventData?.qrX ?? 0.1,
             qrY: eventData?.qrY ?? 0.1,
@@ -990,8 +1028,27 @@ export default function EventDashboardPage() {
           });
         });
         await batch.commit();
+
+        let sent = 0;
+        let failed = 0;
+        const concurrency = 3;
+        for (let i = 0; i < sendItems.length; i += concurrency) {
+          const chunk = sendItems.slice(i, i + concurrency);
+          const results = await Promise.allSettled(
+            chunk.map((item) =>
+              sendWhatsAppPlaceholder(item.phone, item.message, item.link),
+            ),
+          );
+          results.forEach((r) => {
+            if (r.status === "fulfilled") sent += 1;
+            else failed += 1;
+          });
+        }
+
         setInviteStatus(
-          `Invites created for ${guests.length} guests (placeholder WhatsApp send).`,
+          failed
+            ? `WhatsApp sends completed: ${sent} sent, ${failed} failed.`
+            : `WhatsApp sends completed: ${sent} sent.`,
         );
       }
     } catch (err) {

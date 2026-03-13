@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import ConditionalSiteNav from "../components/ConditionalSiteNav";
 import ConditionalFooter from "../components/ConditionalFooter";
@@ -55,6 +56,32 @@ export const metadata: Metadata = {
   },
 };
 
+const watiWidgetOptions = {
+  enabled: true,
+  chatButtonSetting: {
+    backgroundColor: "#00e785",
+    ctaText: "Chat with us",
+    borderRadius: "25",
+    marginLeft: "0",
+    marginRight: "20",
+    marginBottom: "20",
+    ctaIconWATI: false,
+    position: "right",
+  },
+  brandSetting: {
+    brandName: "Access Pro",
+    brandSubTitle: "",
+    brandImg: "https://www.wati.io/wp-content/uploads/2023/04/Wati-logo.svg",
+    welcomeText: "Hi there!\nHow can I help you?",
+    messageText: "Hello, %0A I have a question about {{page_link}}",
+    backgroundColor: "#00e785",
+    ctaText: "Chat with us",
+    borderRadius: "25",
+    autoShow: false,
+    phoneNumber: "2348133689639",
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -69,6 +96,32 @@ export default function RootLayout({
             __html: JSON.stringify(organizationJsonLd),
           }}
         />
+        <Script
+          src="https://wati-integration-prod-service.clare.ai/v2/watiWidget.js?64108"
+          strategy="afterInteractive"
+        />
+        <Script id="wati-widget-init" strategy="afterInteractive">
+          {`(function () {
+  if (typeof window === 'undefined') return;
+  if (window.__watiWidgetInitialized) return;
+  window.__watiWidgetInitialized = true;
+
+  var options = ${JSON.stringify(watiWidgetOptions)};
+  var attempt = 0;
+  var maxAttempts = 200; // ~10s at 50ms
+
+  function init() {
+    attempt++;
+    if (typeof window.CreateWhatsappChatWidget === 'function') {
+      window.CreateWhatsappChatWidget(options);
+      return;
+    }
+    if (attempt < maxAttempts) setTimeout(init, 50);
+  }
+
+  init();
+})();`}
+        </Script>
         <ConditionalSiteNav />
         {children}
         <ConditionalFooter />
