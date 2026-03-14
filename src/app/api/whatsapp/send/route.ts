@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/firebaseIdToken";
-import twilio from "twilio";
 
 export const runtime = "nodejs";
 
 type SendBody = {
   to: string;
-  text: string;
+  text?: string;
   link?: string;
 };
 
@@ -16,19 +15,16 @@ const requireEnv = (key: string) => {
   return value;
 };
 
-const normalizeBearerToken = (value: string) => value.replace(/^Bearer\s+/i, "").trim();
+const normalizeMetaRecipient = (value: string) => String(value ?? "").replace(/[^\d]/g, "");
 
-const normalizeRecipient = (value: string) => {
-  const v = String(value ?? "").trim();
-  if (!v) return "";
-  if (v.toLowerCase().startsWith("whatsapp:")) return v;
-  if (v.startsWith("+")) return `whatsapp:${v}`;
-  const digits = v.replace(/[^\d]/g, "");
-  return digits ? `whatsapp:+${digits}` : "";
+const safeJson = async (res: Response) => res.json().catch(() => null);
+
+const asErrorMessage = (err: unknown) => (err instanceof Error ? err.message : "Unknown error");
+
+const buildWhatsAppTextBody = (textRaw: string, linkRaw: string) => {
+  const parts = [textRaw.trim(), linkRaw.trim()].filter(Boolean);
+  return parts.join("\n").trim().slice(0, 4096);
 };
-
-const asObject = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 
 export async function POST(req: Request) {
   try {
@@ -45,7 +41,7 @@ export async function POST(req: Request) {
     try {
       await verifyFirebaseIdToken(idToken);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid Firebase ID token";
+      const message = asErrorMessage(err) || "Invalid Firebase ID token";
       return NextResponse.json(
         { error: `Auth failed: ${message}` },
         { status: 401 },
@@ -54,56 +50,50 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as Partial<SendBody>;
     const toRaw = String(body.to ?? "");
-    const textRaw = String(body.text ?? "");
+    const textRaw = typeof body.text === "string" ? body.text : "";
     const linkRaw = typeof body.link === "string" ? body.link : "";
 
-    const to = normalizeRecipient(toRaw);
+    const to = normalizeMetaRecipient(toRaw);
     if (!to) {
       return NextResponse.json({ error: "Missing recipient phone number" }, { status: 400 });
     }
 
-    const messageParts = [textRaw.trim(), linkRaw.trim()].filter(Boolean);
-    const message = messageParts.join("\n").trim();
+    const message = buildWhatsAppTextBody(textRaw, linkRaw);
     if (!message) {
       return NextResponse.json({ error: "Missing message text" }, { status: 400 });
     }
 
-    const accountSid = requireEnv("TWILIO_ACCOUNT_SID");
-    const authToken = requireEnv("TWILIO_AUTH_TOKEN");
-    const fromRaw = requireEnv("TWILIO_WHATSAPP_FROM");
-    const from = normalizeRecipient(fromRaw);
-    if (!from) throw new Error("Invalid TWILIO_WHATSAPP_FROM. Example: whatsapp:+14155238886");
+    const accessToken = requireEnv("WHATSAPP_ACCESS_TOKEN");
+    const phoneNumberId = requireEnv("WHATSAPP_PHONE_NUMBER_ID");
+    const graphVersion = process.env.WHATSAPP_GRAPH_VERSION?.trim() || "v20.0";
+    const url = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
 
-    const client = twilio(accountSid, authToken);
-    let result: { sid: string } | null = null;
-    try {
-      result = await client.messages.create({
-        from,
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
         to,
-        body: message.slice(0, 1600),
-      });
-    } catch (err) {
-      const obj = asObject(err);
-      const code = typeof obj?.code === "number" ? obj.code : undefined;
-      const status = typeof obj?.status === "number" ? obj.status : undefined;
-      const moreInfo =
-        typeof obj?.moreInfo === "string" ? obj.moreInfo : undefined;
-      const message =
-        err instanceof Error ? err.message : "Twilio send failed";
+        type: "text",
+        text: { body: message, preview_url: true },
+      }),
+    });
 
+    const data = await safeJson(res);
+    if (!res.ok) {
       return NextResponse.json(
-        {
-          error: `Twilio error: ${message}`,
-          provider: "twilio",
-          twilio: { code, status, moreInfo },
-        },
+        { error: "WhatsApp API error", provider: "meta", status: res.status, details: data },
         { status: 502 },
       );
     }
 
-    return NextResponse.json({ ok: true, provider: "twilio", sid: result.sid });
+    return NextResponse.json({ ok: true, provider: "meta", result: data });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const message = asErrorMessage(err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -930,18 +930,13 @@ export default function EventDashboardPage() {
         | {
             error?: string;
             provider?: string;
-            twilio?: { code?: number; status?: number; moreInfo?: string };
+            status?: number;
           }
         | null;
 
       const pieces = [
         data?.error,
-        typeof data?.twilio?.code === "number"
-          ? `code ${data.twilio.code}`
-          : "",
-        typeof data?.twilio?.status === "number"
-          ? `status ${data.twilio.status}`
-          : "",
+        typeof data?.status === "number" ? `status ${data.status}` : "",
       ].filter(Boolean);
 
       throw new Error(
