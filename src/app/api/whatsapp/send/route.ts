@@ -27,6 +27,9 @@ const normalizeRecipient = (value: string) => {
   return digits ? `whatsapp:+${digits}` : "";
 };
 
+const asObject = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get("authorization") ?? "";
@@ -39,7 +42,15 @@ export async function POST(req: Request) {
     }
 
     const idToken = match[1];
-    await verifyFirebaseIdToken(idToken);
+    try {
+      await verifyFirebaseIdToken(idToken);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid Firebase ID token";
+      return NextResponse.json(
+        { error: `Auth failed: ${message}` },
+        { status: 401 },
+      );
+    }
 
     const body = (await req.json()) as Partial<SendBody>;
     const toRaw = String(body.to ?? "");
@@ -64,11 +75,31 @@ export async function POST(req: Request) {
     if (!from) throw new Error("Invalid TWILIO_WHATSAPP_FROM. Example: whatsapp:+14155238886");
 
     const client = twilio(accountSid, authToken);
-    const result = await client.messages.create({
-      from,
-      to,
-      body: message.slice(0, 1600),
-    });
+    let result: { sid: string } | null = null;
+    try {
+      result = await client.messages.create({
+        from,
+        to,
+        body: message.slice(0, 1600),
+      });
+    } catch (err) {
+      const obj = asObject(err);
+      const code = typeof obj?.code === "number" ? obj.code : undefined;
+      const status = typeof obj?.status === "number" ? obj.status : undefined;
+      const moreInfo =
+        typeof obj?.moreInfo === "string" ? obj.moreInfo : undefined;
+      const message =
+        err instanceof Error ? err.message : "Twilio send failed";
+
+      return NextResponse.json(
+        {
+          error: `Twilio error: ${message}`,
+          provider: "twilio",
+          twilio: { code, status, moreInfo },
+        },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ ok: true, provider: "twilio", sid: result.sid });
   } catch (err) {

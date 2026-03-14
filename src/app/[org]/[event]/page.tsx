@@ -927,9 +927,26 @@ export default function EventDashboardPage() {
 
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as
-        | { error?: string }
+        | {
+            error?: string;
+            provider?: string;
+            twilio?: { code?: number; status?: number; moreInfo?: string };
+          }
         | null;
-      throw new Error(data?.error ?? `WhatsApp send failed (${res.status})`);
+
+      const pieces = [
+        data?.error,
+        typeof data?.twilio?.code === "number"
+          ? `code ${data.twilio.code}`
+          : "",
+        typeof data?.twilio?.status === "number"
+          ? `status ${data.twilio.status}`
+          : "",
+      ].filter(Boolean);
+
+      throw new Error(
+        pieces.length ? pieces.join(" | ") : `WhatsApp send failed (${res.status})`,
+      );
     }
   };
 
