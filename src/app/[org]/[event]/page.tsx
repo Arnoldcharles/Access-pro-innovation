@@ -2283,7 +2283,7 @@ export default function EventDashboardPage() {
                   scale: 0.98,
                   transition: { duration: 0.2 },
                 }}
-                className="relative z-10 w-full max-w-[680px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl"
+                className="relative z-10 w-full max-w-[980px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl max-h-[85vh] overflow-y-auto"
               >
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
@@ -2307,30 +2307,31 @@ export default function EventDashboardPage() {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="text-xs uppercase tracking-widest text-slate-500">
                       Message
                     </label>
                     <textarea
-                      className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm min-h-[120px]"
+                      className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm min-h-[140px] sm:min-h-[320px]"
                       value={inviteMessage}
                       onChange={(event) => setInviteMessage(event.target.value)}
                     />
                   </div>
+
                   {inviteMode === "single" ? (
                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
                       <div className="text-xs text-slate-500 mb-2">
                         Invite link
                       </div>
-                      <div className="text-sm text-blue-400">
+                      <div className="text-sm text-blue-400 break-words">
                         {inviteLink || "Link will appear after send."}
                       </div>
                       <div className="mt-4">
                         <div className="text-xs text-slate-500 mb-2">
                           Preview image
                         </div>
-                        <div className="relative w-full h-48 rounded-xl border border-slate-200 overflow-hidden bg-white">
+                        <div className="relative w-full h-48 sm:h-[320px] rounded-xl border border-slate-200 overflow-hidden bg-white">
                           {eventData?.imageDataUrl ? (
                             <img
                               src={eventData.imageDataUrl}
@@ -2392,13 +2393,29 @@ export default function EventDashboardPage() {
                         </div>
                       </div>
                     </div>
-                  ) : null}
-                  {inviteStatus ? (
-                    <div className="text-sm text-slate-400">{inviteStatus}</div>
-                  ) : null}
+                  ) : (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                      <div className="text-xs uppercase tracking-widest text-slate-500">
+                        Bulk Send
+                      </div>
+                      <div className="mt-2 text-sm text-slate-700">
+                        Messages will be sent to {guests.length} saved guests.
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500">
+                        Each guest gets a unique invite link created from this
+                        page.
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-sm text-slate-400">
+                    {inviteStatus || ""}
+                  </div>
                   <button
                     type="button"
-                    className="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-semibold"
+                    className="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-semibold w-full sm:w-auto"
                     onClick={handleSendInvites}
                     disabled={inviteLoading}
                   >
