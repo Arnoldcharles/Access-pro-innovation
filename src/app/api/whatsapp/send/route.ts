@@ -31,6 +31,18 @@ const buildWhatsAppTextBody = (textRaw: string, linkRaw: string) => {
   return parts.join("\n").trim().slice(0, 4096);
 };
 
+const normalizePhoneDigits = (value: string) => {
+  const digits = String(value ?? "").replace(/[^\d]/g, "");
+
+  // Nigeria-friendly normalization: 080..., 081..., 090... -> 23480..., etc.
+  // Most of your app's phone numbers (and schema telephone) are NG-based.
+  if (digits.length === 11 && digits.startsWith("0")) {
+    return `234${digits.slice(1)}`;
+  }
+
+  return digits;
+};
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get("authorization") ?? "";
@@ -58,9 +70,15 @@ export async function POST(req: Request) {
     const textRaw = typeof body.text === "string" ? body.text : "";
     const linkRaw = typeof body.link === "string" ? body.link : "";
 
-    const to = String(toRaw ?? "").replace(/[^\d]/g, "");
+    const to = normalizePhoneDigits(toRaw);
     if (!to) {
       return NextResponse.json({ error: "Missing recipient phone number" }, { status: 400 });
+    }
+    if (to.length < 11) {
+      return NextResponse.json(
+        { error: "Phone number must include country code (example: 2348133689639)" },
+        { status: 400 },
+      );
     }
 
     const message = buildWhatsAppTextBody(textRaw, linkRaw);

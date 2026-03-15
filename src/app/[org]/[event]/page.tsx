@@ -925,24 +925,25 @@ export default function EventDashboardPage() {
       }),
     });
 
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as
-        | {
-            error?: string;
-            provider?: string;
-            status?: number;
-          }
-        | null;
+    const json = (await res.json().catch(() => null)) as
+      | { ok?: boolean; provider?: string; mode?: string; error?: string; status?: number }
+      | null;
 
+    if (!res.ok) {
       const pieces = [
-        data?.error,
-        typeof data?.status === "number" ? `status ${data.status}` : "",
+        json?.error,
+        typeof json?.status === "number" ? `status ${json.status}` : "",
       ].filter(Boolean);
 
       throw new Error(
         pieces.length ? pieces.join(" | ") : `WhatsApp send failed (${res.status})`,
       );
     }
+
+    return {
+      provider: json?.provider ?? "unknown",
+      mode: json?.mode ?? "unknown",
+    };
   };
 
   const handleSendInvites = async () => {
@@ -989,9 +990,15 @@ export default function EventDashboardPage() {
         });
         await batch.commit();
         setInviteLink(link);
-        await sendWhatsAppPlaceholder(inviteTarget.phone, inviteMessage, link);
+        const sendResult = await sendWhatsAppPlaceholder(
+          inviteTarget.phone,
+          inviteMessage,
+          link,
+        );
         setInviteStatus(
-          "Invite created and sent via WhatsApp.",
+          sendResult.mode === "session"
+            ? "Invite created. WATI sent a session message (guest must have chatted with your number within 24 hours)."
+            : "Invite created and sent via WhatsApp.",
         );
       }
 
