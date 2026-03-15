@@ -978,11 +978,27 @@ export default function EventDashboardPage() {
     const user = auth.currentUser;
     if (!user) throw new Error("Not signed in");
     const token = await user.getIdToken();
+    const envAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
     const appUrl =
-      (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/g, "") ||
+      envAppUrl.replace(/\/+$/g, "") ||
+      "https://accessproinnovation.com" ||
       (typeof window !== "undefined" ? window.location.origin : "");
-    const fullLink =
-      link.startsWith("/") && appUrl ? `${appUrl}${link}` : link;
+
+    // WhatsApp recipients on mobile cannot open localhost/127.0.0.1 links.
+    if (link.startsWith("/")) {
+      if (!appUrl) {
+        throw new Error(
+          "Missing public URL. Set NEXT_PUBLIC_APP_URL (example: https://yourdomain.com) so WhatsApp links open on mobile.",
+        );
+      }
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(appUrl)) {
+        throw new Error(
+          "WhatsApp links cannot use localhost. Set NEXT_PUBLIC_APP_URL to a public HTTPS domain (or an ngrok URL) so mobile can open the invite link.",
+        );
+      }
+    }
+
+    const fullLink = link.startsWith("/") ? `${appUrl}${link}` : link;
 
     const res = await fetch("/api/whatsapp/send", {
       method: "POST",
@@ -1239,7 +1255,8 @@ export default function EventDashboardPage() {
       const token = existingToken || createInviteToken(6);
       const linkPath = `/${orgSlug}/${eventSlug}/invite/${token}`;
       const appUrl =
-        (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/g, "") ||
+        (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/+$/g, "") ||
+        "https://accessproinnovation.com" ||
         (typeof window !== "undefined" ? window.location.origin : "");
       const fullLink = appUrl ? `${appUrl}${linkPath}` : linkPath;
       const now = serverTimestamp();
