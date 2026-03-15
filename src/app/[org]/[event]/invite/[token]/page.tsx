@@ -3,10 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, cubicBezier } from 'framer-motion';
-import { collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 type InviteData = {
+  id: string;
   token: string;
   guestName: string;
   guestPhone: string;
@@ -34,17 +35,25 @@ export default function InvitePage() {
     const loadInvite = async () => {
       const { org, event, token } = params;
       if (!org || !event || !token) return;
-      const snap = await getDoc(doc(db, 'orgs', org, 'events', event, 'invites', token));
-      if (!snap.exists()) {
+      const invitesRef = collection(db, 'orgs', org, 'events', event, 'invites');
+      const q = query(invitesRef, where('token', '==', token), limit(2));
+      const snaps = await getDocs(q);
+      if (snaps.empty) {
         setError('Invite not found.');
         setLoading(false);
         return;
       }
-      const data = snap.data() as InviteData;
+      if (snaps.size > 1) {
+        setError('Multiple invites found for this link. Please contact the organizer.');
+        setLoading(false);
+        return;
+      }
+      const docSnap = snaps.docs[0];
+      const data = docSnap.data() as Omit<InviteData, 'id'>;
       if (data.used) {
         setError('This invite link has already been used.');
       } else {
-        setInvite(data);
+        setInvite({ id: docSnap.id, ...data });
       }
       setLoading(false);
     };
@@ -65,7 +74,7 @@ export default function InvitePage() {
     if (!invite) return;
     setAccepting(true);
     try {
-      await updateDoc(doc(db, 'orgs', params.org, 'events', params.event, 'invites', invite.token), {
+      await updateDoc(doc(db, 'orgs', params.org, 'events', params.event, 'invites', invite.id), {
         used: true,
         acceptedAt: new Date().toISOString(),
         status: 'accepted',
@@ -94,7 +103,7 @@ export default function InvitePage() {
     if (!invite) return;
     setAccepting(true);
     try {
-      await updateDoc(doc(db, 'orgs', params.org, 'events', params.event, 'invites', invite.token), {
+      await updateDoc(doc(db, 'orgs', params.org, 'events', params.event, 'invites', invite.id), {
         used: true,
         declinedAt: new Date().toISOString(),
         status: 'declined',

@@ -9,11 +9,15 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   getDoc,
   increment,
+  limit,
   onSnapshot,
+  query,
   serverTimestamp,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -893,10 +897,77 @@ export default function EventDashboardPage() {
     setTimeout(() => setCopyToast(""), 1800);
   };
 
-  const createToken = () => {
-    if (typeof crypto !== "undefined" && "randomUUID" in crypto)
-      return crypto.randomUUID();
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const createInviteToken = (digits = 6) => {
+    const min = Math.pow(10, Math.max(1, digits - 1));
+    const max = Math.pow(10, digits);
+    const span = Math.max(1, max - min);
+
+    let value: number;
+    if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      value = min + (buf[0] % span);
+    } else {
+      value = min + Math.floor(Math.random() * span);
+    }
+
+    return String(value);
+  };
+
+  const normalizeGuestKey = (guest: { email?: string; phone?: string }) => {
+    const email = (guest.email ?? "").trim().toLowerCase();
+    if (email) return `email:${email}`;
+    const phoneDigits = String(guest.phone ?? "").replace(/[^\d]/g, "");
+    return phoneDigits ? `phone:${phoneDigits}` : "";
+  };
+
+  const getExistingInviteByGuestKey = async (
+    invitesRef: ReturnType<typeof collection>,
+    guestKey: string,
+  ) => {
+    if (!guestKey) return null;
+
+    // Prefer the new guestKey field (stable + unique per guest).
+    type ExistingInvite = {
+      id: string;
+      token?: string;
+      guestKey?: string;
+      guestEmail?: string;
+      guestPhone?: string;
+      used?: boolean;
+    };
+
+    const byKey = await getDocs(
+      query(invitesRef, where("guestKey", "==", guestKey), limit(1)),
+    );
+    if (!byKey.empty) {
+      const docSnap = byKey.docs[0];
+      return { id: docSnap.id, ...(docSnap.data() as Omit<ExistingInvite, "id">) } as ExistingInvite;
+    }
+
+    // Backward-compatible fallback for older invite docs.
+    if (guestKey.startsWith("email:")) {
+      const email = guestKey.slice("email:".length);
+      const byEmail = await getDocs(
+        query(invitesRef, where("guestEmail", "==", email), limit(1)),
+      );
+      if (!byEmail.empty) {
+        const docSnap = byEmail.docs[0];
+        return { id: docSnap.id, ...(docSnap.data() as Omit<ExistingInvite, "id">) } as ExistingInvite;
+      }
+    }
+    if (guestKey.startsWith("phone:")) {
+      const phone = guestKey.slice("phone:".length);
+      const byPhone = await getDocs(
+        query(invitesRef, where("guestPhone", "==", phone), limit(1)),
+      );
+      if (!byPhone.empty) {
+        const docSnap = byPhone.docs[0];
+        return { id: docSnap.id, ...(docSnap.data() as Omit<ExistingInvite, "id">) } as ExistingInvite;
+      }
+    }
+
+    return null as ExistingInvite | null;
   };
 
   const sendWhatsAppPlaceholder = async (
@@ -907,10 +978,11 @@ export default function EventDashboardPage() {
     const user = auth.currentUser;
     if (!user) throw new Error("Not signed in");
     const token = await user.getIdToken();
+    const appUrl =
+      (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/g, "") ||
+      (typeof window !== "undefined" ? window.location.origin : "");
     const fullLink =
-      typeof window !== "undefined" && link.startsWith("/")
-        ? `${window.location.origin}${link}`
-        : link;
+      link.startsWith("/") && appUrl ? `${appUrl}${link}` : link;
 
     const res = await fetch("/api/whatsapp/send", {
       method: "POST",
@@ -943,6 +1015,7 @@ export default function EventDashboardPage() {
     return {
       provider: json?.provider ?? "unknown",
       mode: json?.mode ?? "unknown",
+      fullLink,
     };
   };
 
@@ -965,40 +1038,53 @@ export default function EventDashboardPage() {
       );
 
       if (inviteMode === "single" && inviteTarget) {
-        const token = createToken();
-        const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
-        batch.set(doc(invitesRef, token), {
-          token,
-          guestName: inviteTarget.name,
-          guestPhone: inviteTarget.phone,
-          guestEmail: inviteTarget.email,
-          eventName: eventData?.name ?? "",
-          eventDate: eventData?.date ?? "",
-          eventLocation: eventData?.location ?? "",
-          message: inviteMessage,
-          imageDataUrl: eventData?.imageDataUrl ?? "",
-          qrX: eventData?.qrX ?? 0.1,
-          qrY: eventData?.qrY ?? 0.1,
-          qrSize: eventData?.qrSize ?? 96,
-          nameX: eventData?.nameX ?? 0.1,
-          nameY: eventData?.nameY ?? 0.3,
-          nameColor: eventData?.nameColor ?? "#111827",
-          nameSize: eventData?.nameSize ?? 16,
-          nameFont: eventData?.nameFont ?? "Arial, sans-serif",
-          used: false,
-          createdAt: serverTimestamp(),
+        const guestKey = normalizeGuestKey({
+          email: inviteTarget.email,
+          phone: inviteTarget.phone,
         });
-        await batch.commit();
-        setInviteLink(link);
-        const sendResult = await sendWhatsAppPlaceholder(
-          inviteTarget.phone,
-          inviteMessage,
-          link,
-        );
+
+        const existing = await getExistingInviteByGuestKey(invitesRef, guestKey);
+        const existingToken =
+          typeof existing?.token === "string" ? existing.token : "";
+
+        const token = existingToken || createInviteToken(6);
+        const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
+
+        if (!existingToken) {
+          const inviteDoc = doc(invitesRef);
+          batch.set(inviteDoc, {
+            token,
+            guestKey,
+            guestName: inviteTarget.name,
+            guestPhone: inviteTarget.phone,
+            guestEmail: inviteTarget.email.trim().toLowerCase(),
+            eventName: eventData?.name ?? "",
+            eventDate: eventData?.date ?? "",
+            eventLocation: eventData?.location ?? "",
+            message: inviteMessage,
+            imageDataUrl: eventData?.imageDataUrl ?? "",
+            qrX: eventData?.qrX ?? 0.1,
+            qrY: eventData?.qrY ?? 0.1,
+            qrSize: eventData?.qrSize ?? 96,
+            nameX: eventData?.nameX ?? 0.1,
+            nameY: eventData?.nameY ?? 0.3,
+            nameColor: eventData?.nameColor ?? "#111827",
+            nameSize: eventData?.nameSize ?? 16,
+            nameFont: eventData?.nameFont ?? "Arial, sans-serif",
+            used: false,
+            createdAt: serverTimestamp(),
+          });
+          await batch.commit();
+        }
+
+        const sendResult = await sendWhatsAppPlaceholder(inviteTarget.phone, inviteMessage, link);
+        setInviteLink(sendResult.fullLink);
         setInviteStatus(
           sendResult.mode === "session"
             ? "Invite created. WATI sent a session message (guest must have chatted with your number within 24 hours)."
-            : "Invite created and sent via WhatsApp.",
+            : existingToken
+              ? "Invite already exists and was resent via WhatsApp."
+              : "Invite created and sent via WhatsApp.",
         );
       }
 
@@ -1008,27 +1094,75 @@ export default function EventDashboardPage() {
           setInviteLoading(false);
           return;
         }
-        const inviteItems = guests
-          .map((guest) => {
-            const token = createToken();
-            const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
-            return {
-              token,
-              link,
-              phone: guest.phone,
-              message: buildInviteMessage(guest.name),
-              guestName: guest.name,
-              guestEmail: guest.email,
+        const guestKeys = guests
+          .map((guest) => normalizeGuestKey(guest))
+          .filter(Boolean);
+
+        const existingByKey = new Map<
+          string,
+          { id: string; token: string; guestPhone?: string; guestEmail?: string }
+        >();
+        const existingTokens = new Set<string>();
+
+        // Firestore "in" queries are limited (usually 30 values); chunk to support larger lists.
+        for (let i = 0; i < guestKeys.length; i += 30) {
+          const chunk = guestKeys.slice(i, i + 30);
+          const snaps = await getDocs(
+            query(invitesRef, where("guestKey", "in", chunk)),
+          );
+          snaps.docs.forEach((docSnap) => {
+            const data = docSnap.data() as {
+              token?: unknown;
+              guestKey?: unknown;
+              guestPhone?: unknown;
+              guestEmail?: unknown;
             };
+            const key = typeof data.guestKey === "string" ? data.guestKey : "";
+            const token = typeof data.token === "string" ? data.token : "";
+            if (!key || !token) return;
+            existingByKey.set(key, {
+              id: docSnap.id,
+              token,
+              guestPhone: typeof data.guestPhone === "string" ? data.guestPhone : undefined,
+              guestEmail: typeof data.guestEmail === "string" ? data.guestEmail : undefined,
+            });
+            existingTokens.add(token);
           });
+        }
+
+        const usedTokens = new Set<string>(existingTokens);
+        const inviteItems = guests.map((guest) => {
+          const guestKey = normalizeGuestKey(guest);
+          const existing = guestKey ? existingByKey.get(guestKey) : undefined;
+          const token = existing?.token || (() => {
+            let t = createInviteToken(6);
+            while (usedTokens.has(t)) t = createInviteToken(6);
+            usedTokens.add(t);
+            return t;
+          })();
+
+          const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
+          return {
+            token,
+            link,
+            guestKey,
+            isExisting: Boolean(existing?.token),
+            phone: guest.phone,
+            message: buildInviteMessage(guest.name),
+            guestName: guest.name,
+            guestEmail: guest.email,
+          };
+        });
         const sendItems = inviteItems.filter((item) => Boolean(item.phone));
 
         inviteItems.forEach((item) => {
-          batch.set(doc(invitesRef, item.token), {
+          if (item.isExisting) return;
+          batch.set(doc(invitesRef), {
             token: item.token,
+            guestKey: item.guestKey,
             guestName: item.guestName,
             guestPhone: item.phone,
-            guestEmail: item.guestEmail,
+            guestEmail: item.guestEmail.trim().toLowerCase(),
             eventName: eventData?.name ?? "",
             eventDate: eventData?.date ?? "",
             eventLocation: eventData?.location ?? "",
@@ -1088,14 +1222,6 @@ export default function EventDashboardPage() {
       return;
     }
     try {
-      const token = createToken();
-      const linkPath = `/${orgSlug}/${eventSlug}/invite/${token}`;
-      const fullLink =
-        typeof window !== "undefined"
-          ? `${window.location.origin}${linkPath}`
-          : linkPath;
-      const now = serverTimestamp();
-      const batch = writeBatch(db);
       const invitesRef = collection(
         db,
         "orgs",
@@ -1104,28 +1230,47 @@ export default function EventDashboardPage() {
         eventSlug,
         "invites",
       );
-      batch.set(doc(invitesRef, token), {
-        token,
-        guestName: guest.name,
-        guestPhone: guest.phone,
-        guestEmail: guest.email,
-        eventName: eventData?.name ?? "",
-        eventDate: eventData?.date ?? "",
-        eventLocation: eventData?.location ?? "",
-        message: buildInviteMessage(guest.name),
-        imageDataUrl: eventData?.imageDataUrl ?? "",
-        qrX: eventData?.qrX ?? 0.1,
-        qrY: eventData?.qrY ?? 0.1,
-        qrSize: eventData?.qrSize ?? 96,
-        nameX: eventData?.nameX ?? 0.1,
-        nameY: eventData?.nameY ?? 0.3,
-        nameColor: eventData?.nameColor ?? "#111827",
-        nameSize: eventData?.nameSize ?? 16,
-        nameFont: eventData?.nameFont ?? "Arial, sans-serif",
-        nameBg: eventData?.nameBg !== false,
-        createdAt: now,
-      });
-      await batch.commit();
+
+      const guestKey = normalizeGuestKey(guest);
+      const existing = await getExistingInviteByGuestKey(invitesRef, guestKey);
+      const existingToken =
+        typeof existing?.token === "string" ? existing.token : "";
+
+      const token = existingToken || createInviteToken(6);
+      const linkPath = `/${orgSlug}/${eventSlug}/invite/${token}`;
+      const appUrl =
+        (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/g, "") ||
+        (typeof window !== "undefined" ? window.location.origin : "");
+      const fullLink = appUrl ? `${appUrl}${linkPath}` : linkPath;
+      const now = serverTimestamp();
+
+      if (!existingToken) {
+        const batch = writeBatch(db);
+        batch.set(doc(invitesRef), {
+          token,
+          guestKey,
+          guestName: guest.name,
+          guestPhone: guest.phone,
+          guestEmail: guest.email.trim().toLowerCase(),
+          eventName: eventData?.name ?? "",
+          eventDate: eventData?.date ?? "",
+          eventLocation: eventData?.location ?? "",
+          message: buildInviteMessage(guest.name),
+          imageDataUrl: eventData?.imageDataUrl ?? "",
+          qrX: eventData?.qrX ?? 0.1,
+          qrY: eventData?.qrY ?? 0.1,
+          qrSize: eventData?.qrSize ?? 96,
+          nameX: eventData?.nameX ?? 0.1,
+          nameY: eventData?.nameY ?? 0.3,
+          nameColor: eventData?.nameColor ?? "#111827",
+          nameSize: eventData?.nameSize ?? 16,
+          nameFont: eventData?.nameFont ?? "Arial, sans-serif",
+          nameBg: eventData?.nameBg !== false,
+          used: false,
+          createdAt: now,
+        });
+        await batch.commit();
+      }
       await navigator.clipboard.writeText(fullLink);
       showGuestNotice("Guest invite link copied.");
       showCopyToast("Link copied successfully");
