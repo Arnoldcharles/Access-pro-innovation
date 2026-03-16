@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, cubicBezier } from 'framer-motion';
-import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 type InviteData = {
@@ -27,8 +27,6 @@ export default function InvitePage() {
   const [invite, setInvite] = useState<InviteData | null>(null);
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
-  const [phoneCheck, setPhoneCheck] = useState('');
-  const [verified, setVerified] = useState(false);
   const [finalStatus, setFinalStatus] = useState<'accepted' | 'declined' | null>(null);
 
   useEffect(() => {
@@ -36,25 +34,19 @@ export default function InvitePage() {
       const { org, event, token } = params;
       if (!org || !event || !token) return;
       try {
-        const invitesRef = collection(db, 'orgs', org, 'events', event, 'invites');
-        const q = query(invitesRef, where('token', '==', token), limit(2));
-        const snaps = await getDocs(q);
-        if (snaps.empty) {
+        // Fetch directly by document id (token) to avoid needing "list" permissions.
+        const docRef = doc(db, 'orgs', org, 'events', event, 'invites', token);
+        const snap = await getDoc(docRef);
+        if (!snap.exists()) {
           setError('Invite not found.');
           setLoading(false);
           return;
         }
-        if (snaps.size > 1) {
-          setError('Multiple invites found for this link. Please contact the organizer.');
-          setLoading(false);
-          return;
-        }
-        const docSnap = snaps.docs[0];
-        const data = docSnap.data() as Omit<InviteData, 'id'>;
+        const data = snap.data() as Omit<InviteData, 'id'>;
         if (data.used) {
           setError('This invite link has already been used.');
         } else {
-          setInvite({ id: docSnap.id, ...data });
+          setInvite({ id: snap.id, ...data });
         }
         setLoading(false);
       } catch (err) {
@@ -66,16 +58,6 @@ export default function InvitePage() {
     loadInvite();
   }, [params]);
 
-  const handleVerify = () => {
-    if (!invite) return;
-    if (phoneCheck.trim() === invite.guestPhone) {
-      setVerified(true);
-      setError('');
-    } else {
-      setError('Phone number does not match the invite.');
-    }
-  };
-
   const handleAccept = async () => {
     if (!invite) return;
     setAccepting(true);
@@ -85,16 +67,6 @@ export default function InvitePage() {
         acceptedAt: new Date().toISOString(),
         status: 'accepted',
       });
-      if (invite?.guestEmail) {
-        const guestsQuery = query(
-          collection(db, 'orgs', params.org, 'events', params.event, 'guests'),
-          where('email', '==', invite.guestEmail)
-        );
-        const guestsSnap = await getDocs(guestsQuery);
-        for (const guestDoc of guestsSnap.docs) {
-          await updateDoc(guestDoc.ref, { status: 'accepted' });
-        }
-      }
       setInvite({ ...invite, used: true });
       setFinalStatus('accepted');
     } catch (err) {
@@ -114,16 +86,6 @@ export default function InvitePage() {
         declinedAt: new Date().toISOString(),
         status: 'declined',
       });
-      if (invite?.guestEmail) {
-        const guestsQuery = query(
-          collection(db, 'orgs', params.org, 'events', params.event, 'guests'),
-          where('email', '==', invite.guestEmail)
-        );
-        const guestsSnap = await getDocs(guestsQuery);
-        for (const guestDoc of guestsSnap.docs) {
-          await updateDoc(guestDoc.ref, { status: 'declined' });
-        }
-      }
       setInvite({ ...invite, used: true });
       setFinalStatus('declined');
     } catch (err) {
@@ -142,9 +104,9 @@ export default function InvitePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-slate-600">
-          <span className="h-4 w-4 rounded-full border-2 border-slate-300 border-r-blue-600 animate-spin" />
+      <div className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.16),transparent_35%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.14),transparent_38%),linear-gradient(160deg,#070b1a_0%,#0a1737_52%,#111f44_100%)] text-white flex items-center justify-center px-6">
+        <div className="flex items-center gap-3 text-sm text-white/80">
+          <span className="h-4 w-4 rounded-full border-2 border-white/25 border-r-emerald-300 animate-spin" />
           Loading invite...
         </div>
       </div>
@@ -153,18 +115,22 @@ export default function InvitePage() {
 
   if (error && !invite) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center">
-        {error}
+      <div className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.16),transparent_35%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.14),transparent_38%),linear-gradient(160deg,#070b1a_0%,#0a1737_52%,#111f44_100%)] text-white flex items-center justify-center px-6">
+        <div className="w-full max-w-[520px] rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur">
+          <div className="text-xs font-semibold uppercase tracking-[0.26em] text-white/70">Invite</div>
+          <div className="mt-2 text-xl font-black">Unable to open link</div>
+          <div className="mt-3 text-sm text-white/80 break-words">{error}</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
-      <div className="max-w-[620px] mx-auto px-6 sm:px-10 py-16">
-        <motion.div initial="hidden" animate="show" variants={fadeUp} className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.16),transparent_35%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.14),transparent_38%),linear-gradient(160deg,#070b1a_0%,#0a1737_52%,#111f44_100%)] text-white font-sans antialiased">
+      <div className="max-w-[820px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
+        <motion.div initial="hidden" animate="show" variants={fadeUp} className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
           {finalStatus ? (
-            <div className="text-center py-8 relative overflow-hidden">
+            <div className="text-center py-10 px-6 sm:px-10 relative overflow-hidden">
               {finalStatus === 'accepted' ? (
                 <div className="absolute inset-0 pointer-events-none">
                   {[...Array(14)].map((_, i) => (
@@ -194,7 +160,7 @@ export default function InvitePage() {
                 {finalStatus === 'accepted' ? 'Invite accepted' : 'Invite declined'}
               </motion.h2>
               <motion.p
-                className="text-slate-600"
+                className="text-white/80"
                 initial={finalStatus === 'accepted' ? { x: 40, opacity: 0 } : false}
                 animate={finalStatus === 'accepted' ? { x: 0, opacity: 1 } : false}
                 transition={{ duration: 0.5, ease: easeOut, delay: 0.05 }}
@@ -206,65 +172,77 @@ export default function InvitePage() {
             </div>
           ) : (
             <>
-          <h1 className="text-2xl font-black mb-2">
-            {invite?.guestName || 'Guest'}, you are invited to {invite?.eventName}
-          </h1>
-          <p className="text-slate-600 mb-6">
-            Date: {invite?.eventDate || 'TBD'} - Location: {invite?.eventLocation || 'TBD'}
-          </p>
+          <div className="px-6 sm:px-10 pt-8 pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.26em] text-white/70">Event invite</div>
+                <h1 className="mt-3 text-2xl sm:text-3xl font-black leading-tight">
+                  {invite?.eventName || 'Your event'}
+                </h1>
+                <div className="mt-2 text-sm text-white/80">
+                  {invite?.eventDate || 'TBD'}
+                  {invite?.eventLocation ? ` • ${invite.eventLocation}` : ''}
+                </div>
+              </div>
+              <div className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-white/70">Guest</div>
+                <div className="mt-1 text-sm font-semibold">{invite?.guestName || 'Guest'}</div>
+              </div>
+            </div>
+          </div>
 
-          {!verified ? (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600">Confirm your phone number to open this invite.</p>
-              <input
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Phone number"
-                value={phoneCheck}
-                onChange={(event) => setPhoneCheck(event.target.value)}
+          {invite?.imageDataUrl ? (
+            <div className="relative w-full bg-black/25">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.22),transparent_45%),radial-gradient(circle_at_70%_10%,rgba(59,130,246,0.18),transparent_52%)]" />
+              <img
+                src={invite.imageDataUrl}
+                alt="Invite design"
+                className="relative w-full max-h-[420px] object-contain sm:object-cover"
               />
-              <button className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-semibold" onClick={handleVerify}>
-                Verify
-              </button>
-              {error ? <div className="text-sm text-red-400">{error}</div> : null}
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="text-sm text-slate-600">Message:</div>
-              <div className="text-sm bg-slate-50 border border-slate-200 rounded-xl p-4">{invite?.message}</div>
-              {invite?.imageDataUrl ? (
-                <img src={invite.imageDataUrl} alt="Invite" className="rounded-2xl border border-white/10" />
-              ) : null}
-              <div className="flex items-center gap-4">
-                <div className="w-28 h-28 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-xs text-slate-500">
-                  <img
-                    alt="QR code"
-                    className="w-full h-full object-cover rounded-xl"
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                      `${invite?.guestName ?? ''}|${params.org}/${params.event}`
-                    )}`}
-                  />
-                </div>
-                <div className="text-xs text-slate-500">QR contains guest name + event ID.</div>
+            <div className="px-6 sm:px-10">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
+                No invite image was attached for this event.
               </div>
-              <div className="flex items-center gap-3">
+            </div>
+          )}
+
+          <div className="px-6 sm:px-10 py-8">
+            <div className="space-y-5">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Message</div>
+                <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/90 whitespace-pre-wrap">
+                  {invite?.message || 'You have been invited.'}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <button
-                  className="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-semibold"
+                  className="px-5 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black disabled:opacity-60"
                   disabled={accepting}
                   onClick={handleAccept}
                 >
                   {accepting ? 'Accepting...' : 'I accept'}
                 </button>
                 <button
-                  className="px-5 py-3 rounded-2xl bg-slate-100 text-slate-700 font-semibold"
+                  className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold border border-white/10 disabled:opacity-60"
                   disabled={accepting}
                   onClick={handleDecline}
                 >
                   Decline
                 </button>
               </div>
-              {error ? <div className="text-sm text-red-400">{error}</div> : null}
+
+              {error ? (
+                <div className="text-sm text-rose-200 border border-rose-200/20 bg-rose-500/10 rounded-2xl px-4 py-3">
+                  {error}
+                </div>
+              ) : null}
+
+              <div className="pt-2 text-xs text-white/60">Powered by Access Pro Innovation</div>
             </div>
-          )}
+          </div>
             </>
           )}
         </motion.div>

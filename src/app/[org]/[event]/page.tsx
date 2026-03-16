@@ -1062,12 +1062,43 @@ export default function EventDashboardPage() {
         const existing = await getExistingInviteByGuestKey(invitesRef, guestKey);
         const existingToken =
           typeof existing?.token === "string" ? existing.token : "";
+        const existingUsed =
+          typeof existing?.used === "boolean" ? existing.used : false;
 
         const token = existingToken || createInviteToken(6);
         const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
 
-        if (!existingToken) {
-          const inviteDoc = doc(invitesRef);
+        // Store invite doc at a stable ID = token so the public invite page can `get` (no query/list).
+        // Always upsert to ensure the link works even if a previous invite existed with a random doc ID.
+        const inviteDoc = doc(invitesRef, token);
+        if (existingToken) {
+          batch.set(
+            inviteDoc,
+            {
+              token,
+              guestKey,
+              guestName: inviteTarget.name,
+              guestPhone: inviteTarget.phone,
+              guestEmail: inviteTarget.email.trim().toLowerCase(),
+              eventName: eventData?.name ?? "",
+              eventDate: eventData?.date ?? "",
+              eventLocation: eventData?.location ?? "",
+              message: inviteMessage,
+              imageDataUrl: eventData?.imageDataUrl ?? "",
+              qrX: eventData?.qrX ?? 0.1,
+              qrY: eventData?.qrY ?? 0.1,
+              qrSize: eventData?.qrSize ?? 96,
+              nameX: eventData?.nameX ?? 0.1,
+              nameY: eventData?.nameY ?? 0.3,
+              nameColor: eventData?.nameColor ?? "#111827",
+              nameSize: eventData?.nameSize ?? 16,
+              nameFont: eventData?.nameFont ?? "Arial, sans-serif",
+              used: existingUsed,
+            },
+            { merge: true },
+          );
+          await batch.commit();
+        } else {
           batch.set(inviteDoc, {
             token,
             guestKey,
@@ -1116,7 +1147,7 @@ export default function EventDashboardPage() {
 
         const existingByKey = new Map<
           string,
-          { id: string; token: string; guestPhone?: string; guestEmail?: string }
+          { id: string; token: string; used?: boolean; guestPhone?: string; guestEmail?: string }
         >();
         const existingTokens = new Set<string>();
 
@@ -1130,6 +1161,7 @@ export default function EventDashboardPage() {
             const data = docSnap.data() as {
               token?: unknown;
               guestKey?: unknown;
+              used?: unknown;
               guestPhone?: unknown;
               guestEmail?: unknown;
             };
@@ -1139,6 +1171,7 @@ export default function EventDashboardPage() {
             existingByKey.set(key, {
               id: docSnap.id,
               token,
+              used: typeof data.used === "boolean" ? data.used : undefined,
               guestPhone: typeof data.guestPhone === "string" ? data.guestPhone : undefined,
               guestEmail: typeof data.guestEmail === "string" ? data.guestEmail : undefined,
             });
@@ -1163,6 +1196,7 @@ export default function EventDashboardPage() {
             link,
             guestKey,
             isExisting: Boolean(existing?.token),
+            used: existing?.used,
             phone: guest.phone,
             message: buildInviteMessage(guest.name),
             guestName: guest.name,
@@ -1172,8 +1206,8 @@ export default function EventDashboardPage() {
         const sendItems = inviteItems.filter((item) => Boolean(item.phone));
 
         inviteItems.forEach((item) => {
-          if (item.isExisting) return;
-          batch.set(doc(invitesRef), {
+          const docRef = doc(invitesRef, item.token);
+          const baseData = {
             token: item.token,
             guestKey: item.guestKey,
             guestName: item.guestName,
@@ -1192,9 +1226,20 @@ export default function EventDashboardPage() {
             nameColor: eventData?.nameColor ?? "#111827",
             nameSize: eventData?.nameSize ?? 16,
             nameFont: eventData?.nameFont ?? "Arial, sans-serif",
-            used: false,
-            createdAt: serverTimestamp(),
-          });
+          };
+
+          if (item.isExisting) {
+            batch.set(
+              docRef,
+              {
+                ...baseData,
+                used: typeof item.used === "boolean" ? item.used : false,
+              },
+              { merge: true },
+            );
+          } else {
+            batch.set(docRef, { ...baseData, used: false, createdAt: serverTimestamp() });
+          }
         });
         await batch.commit();
 
@@ -1251,6 +1296,8 @@ export default function EventDashboardPage() {
       const existing = await getExistingInviteByGuestKey(invitesRef, guestKey);
       const existingToken =
         typeof existing?.token === "string" ? existing.token : "";
+      const existingUsed =
+        typeof existing?.used === "boolean" ? existing.used : false;
 
       const token = existingToken || createInviteToken(6);
       const linkPath = `/${orgSlug}/${eventSlug}/invite/${token}`;
@@ -1261,9 +1308,39 @@ export default function EventDashboardPage() {
       const fullLink = appUrl ? `${appUrl}${linkPath}` : linkPath;
       const now = serverTimestamp();
 
-      if (!existingToken) {
+      const inviteDoc = doc(invitesRef, token);
+      if (existingToken) {
         const batch = writeBatch(db);
-        batch.set(doc(invitesRef), {
+        batch.set(
+          inviteDoc,
+          {
+            token,
+            guestKey,
+            guestName: guest.name,
+            guestPhone: guest.phone,
+            guestEmail: guest.email.trim().toLowerCase(),
+            eventName: eventData?.name ?? "",
+            eventDate: eventData?.date ?? "",
+            eventLocation: eventData?.location ?? "",
+            message: buildInviteMessage(guest.name),
+            imageDataUrl: eventData?.imageDataUrl ?? "",
+            qrX: eventData?.qrX ?? 0.1,
+            qrY: eventData?.qrY ?? 0.1,
+            qrSize: eventData?.qrSize ?? 96,
+            nameX: eventData?.nameX ?? 0.1,
+            nameY: eventData?.nameY ?? 0.3,
+            nameColor: eventData?.nameColor ?? "#111827",
+            nameSize: eventData?.nameSize ?? 16,
+            nameFont: eventData?.nameFont ?? "Arial, sans-serif",
+            nameBg: eventData?.nameBg !== false,
+            used: existingUsed,
+          },
+          { merge: true },
+        );
+        await batch.commit();
+      } else {
+        const batch = writeBatch(db);
+        batch.set(inviteDoc, {
           token,
           guestKey,
           guestName: guest.name,
