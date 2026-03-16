@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/firebaseIdToken";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,41 @@ const normalizePhoneDigits = (value: string) => {
   return digits;
 };
 
+const computeInviteSig = (secret: string, token: string, toDigits: string) => {
+  return crypto
+    .createHmac("sha256", secret)
+    .update(`${token}.${toDigits}`)
+    .digest("base64url")
+    .slice(0, 24);
+};
+
+const maybeSignInviteLink = (linkRaw: string, token: string, toDigits: string) => {
+  const secret = (process.env.INVITE_LINK_SECRET ?? "").trim();
+  if (!secret) return linkRaw;
+  if (!token) return linkRaw;
+  if (!toDigits) return linkRaw;
+
+  try {
+    const url = new URL(linkRaw);
+    const sig = computeInviteSig(secret, token, toDigits);
+    url.searchParams.set("k", sig);
+    return url.toString();
+  } catch {
+    return linkRaw;
+  }
+};
+
+const extractTokenFromLink = (linkRaw: string) => {
+  try {
+    const url = new URL(linkRaw);
+    const parts = url.pathname.split("/").filter(Boolean);
+    return parts[parts.length - 1] ?? "";
+  } catch {
+    const parts = linkRaw.split("?")[0].split("/").filter(Boolean);
+    return parts[parts.length - 1] ?? "";
+  }
+};
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get("authorization") ?? "";
@@ -81,7 +117,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const message = buildWhatsAppTextBody(textRaw, linkRaw);
+    const inviteToken = extractTokenFromLink(linkRaw);
+    const signedLink = maybeSignInviteLink(linkRaw, inviteToken, to);
+    const message = buildWhatsAppTextBody(textRaw, signedLink);
     if (!message) {
       return NextResponse.json({ error: "Missing message text" }, { status: 400 });
     }
@@ -107,7 +145,7 @@ export async function POST(req: Request) {
           ? body.parameters
           : [
               { name: "1", value: textRaw.trim() },
-              ...(linkRaw.trim() ? [{ name: "2", value: linkRaw.trim() }] : []),
+              ...(signedLink.trim() ? [{ name: "2", value: signedLink.trim() }] : []),
             ];
 
       const broadcastPrefix = (process.env.WATI_BROADCAST_PREFIX ?? "accesspro").trim();

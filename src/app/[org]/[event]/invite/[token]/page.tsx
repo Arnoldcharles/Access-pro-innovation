@@ -28,6 +28,7 @@ export default function InvitePage() {
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
   const [finalStatus, setFinalStatus] = useState<'accepted' | 'declined' | null>(null);
+  const [followupStatus, setFollowupStatus] = useState('');
 
   useEffect(() => {
     const loadInvite = async () => {
@@ -61,6 +62,7 @@ export default function InvitePage() {
   const handleAccept = async () => {
     if (!invite) return;
     setAccepting(true);
+    setFollowupStatus('');
     try {
       await updateDoc(doc(db, 'orgs', params.org, 'events', params.event, 'invites', invite.id), {
         used: true,
@@ -69,6 +71,30 @@ export default function InvitePage() {
       });
       setInvite({ ...invite, used: true });
       setFinalStatus('accepted');
+
+      const sig =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('k') || ''
+          : '';
+      if (sig) {
+        const res = await fetch('/api/whatsapp/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: invite.guestPhone,
+            token: invite.token,
+            sig,
+            eventName: invite.eventName,
+            guestName: invite.guestName,
+          }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          setFollowupStatus(data?.error || 'Unable to send WhatsApp confirmation.');
+        } else {
+          setFollowupStatus('Confirmation sent on WhatsApp.');
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to accept invite';
       setError(message);
@@ -241,6 +267,9 @@ export default function InvitePage() {
               ) : null}
 
               <div className="pt-2 text-xs text-white/60">Powered by Access Pro Innovation</div>
+              {followupStatus ? (
+                <div className="text-xs text-white/70">{followupStatus}</div>
+              ) : null}
             </div>
           </div>
             </>
