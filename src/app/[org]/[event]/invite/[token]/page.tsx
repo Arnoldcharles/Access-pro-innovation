@@ -35,27 +35,33 @@ export default function InvitePage() {
     const loadInvite = async () => {
       const { org, event, token } = params;
       if (!org || !event || !token) return;
-      const invitesRef = collection(db, 'orgs', org, 'events', event, 'invites');
-      const q = query(invitesRef, where('token', '==', token), limit(2));
-      const snaps = await getDocs(q);
-      if (snaps.empty) {
-        setError('Invite not found.');
+      try {
+        const invitesRef = collection(db, 'orgs', org, 'events', event, 'invites');
+        const q = query(invitesRef, where('token', '==', token), limit(2));
+        const snaps = await getDocs(q);
+        if (snaps.empty) {
+          setError('Invite not found.');
+          setLoading(false);
+          return;
+        }
+        if (snaps.size > 1) {
+          setError('Multiple invites found for this link. Please contact the organizer.');
+          setLoading(false);
+          return;
+        }
+        const docSnap = snaps.docs[0];
+        const data = docSnap.data() as Omit<InviteData, 'id'>;
+        if (data.used) {
+          setError('This invite link has already been used.');
+        } else {
+          setInvite({ id: docSnap.id, ...data });
+        }
         setLoading(false);
-        return;
-      }
-      if (snaps.size > 1) {
-        setError('Multiple invites found for this link. Please contact the organizer.');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to load invite';
+        setError(message);
         setLoading(false);
-        return;
       }
-      const docSnap = snaps.docs[0];
-      const data = docSnap.data() as Omit<InviteData, 'id'>;
-      if (data.used) {
-        setError('This invite link has already been used.');
-      } else {
-        setInvite({ id: docSnap.id, ...data });
-      }
-      setLoading(false);
     };
     loadInvite();
   }, [params]);
