@@ -443,7 +443,7 @@ export default function OrgSettingsPage() {
       <AnimatePresence>
         {toast ? (
           <motion.div
-            className="fixed bottom-6 right-6 z-[80] w-[min(92vw,360px)]"
+            className="fixed top-6 right-6 z-[80] w-[min(92vw,360px)]"
             initial={{ opacity: 0, y: 14, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
