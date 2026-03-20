@@ -118,6 +118,36 @@ body {
   color: var(--muted) !important;
 }
 
+/* Hover shim for dark mode (Tailwind hover:* utilities) */
+:root[data-theme="dark"] .hover\:bg-white:hover {
+  background-color: var(--surface) !important;
+}
+
+:root[data-theme="dark"] .hover\:bg-slate-50:hover {
+  background-color: var(--surface-3) !important;
+}
+
+:root[data-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: rgb(var(--surface-3-rgb) / 0.85) !important;
+}
+
+:root[data-theme="dark"] .hover\:border-slate-200:hover,
+:root[data-theme="dark"] .hover\:border-slate-100:hover {
+  border-color: rgb(var(--foreground-rgb) / 0.22) !important;
+}
+
+:root[data-theme="dark"] .hover\:text-slate-900:hover,
+:root[data-theme="dark"] .hover\:text-slate-800:hover,
+:root[data-theme="dark"] .hover\:text-slate-700:hover {
+  color: rgb(var(--foreground-rgb) / 0.92) !important;
+}
+
+:root[data-theme="dark"] .hover\:text-slate-600:hover,
+:root[data-theme="dark"] .hover\:text-slate-500:hover,
+:root[data-theme="dark"] .hover\:text-slate-400:hover {
+  color: rgb(var(--foreground-rgb) / 0.78) !important;
+}
+
 h1,
 h2,
 h3,
