@@ -72,6 +72,7 @@ export default function OrgDashboardPage() {
   const [orgs, setOrgs] = useState<Array<{ slug: string; name?: string }>>([]);
   const [connectedDevices, setConnectedDevices] = useState(0);
   const [connectedDeviceNames, setConnectedDeviceNames] = useState<string[]>([]);
+  const [connectedDeviceFullNames, setConnectedDeviceFullNames] = useState<string[]>([]);
   const [devicesModalOpen, setDevicesModalOpen] = useState(false);
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -84,11 +85,9 @@ export default function OrgDashboardPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
-  const [introCanSkip, setIntroCanSkip] = useState(false);
   const introTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const introAnimationMs = 12000;
-  const closeIntro = () => {
-    setIntroOpen(false);
+  const clearIntroTimer = () => {
     if (introTimerRef.current) {
       clearTimeout(introTimerRef.current);
       introTimerRef.current = null;
@@ -191,23 +190,12 @@ export default function OrgDashboardPage() {
         },
       );
       if (typeof window !== "undefined") {
-        const introKey = `ap:intro:${firebaseUser.uid}:${slug}`;
-        const introEverKey = `ap:intro-ever:${firebaseUser.uid}:${slug}`;
-        const seenIntro = window.sessionStorage.getItem(introKey) === "1";
-        const seenEver = window.localStorage.getItem(introEverKey) === "1";
-        if (!seenIntro) {
-          window.sessionStorage.setItem(introKey, "1");
-          if (!seenEver) window.localStorage.setItem(introEverKey, "1");
-          setIntroCanSkip(seenEver);
-          setIntroOpen(true);
-          introTimerRef.current = setTimeout(() => {
-            setIntroOpen(false);
-            introTimerRef.current = null;
-          }, introAnimationMs);
-        } else {
-          setIntroCanSkip(false);
+        setIntroOpen(true);
+        clearIntroTimer();
+        introTimerRef.current = setTimeout(() => {
           setIntroOpen(false);
-        }
+          introTimerRef.current = null;
+        }, introAnimationMs);
       }
 
       setLoading(false);
@@ -260,15 +248,19 @@ export default function OrgDashboardPage() {
             return now - lastSeenMs <= activeWindowMs;
           });
           setConnectedDevices(activeDocs.length);
-          setConnectedDeviceNames(
-            activeDocs
-              .map((docSnap) => {
-                const data = docSnap.data() as { deviceName?: string; userName?: string };
-                const deviceName = data.deviceName || docSnap.id.slice(0, 6);
-                const userName = (data.userName || "").trim();
-                return userName ? `${userName} — ${deviceName}` : deviceName;
-              }),
-          );
+          const deviceNames = activeDocs.map((docSnap) => {
+            const data = docSnap.data() as { deviceName?: string };
+            return data.deviceName || docSnap.id.slice(0, 6);
+          });
+          setConnectedDeviceNames(deviceNames);
+
+          const fullNames = activeDocs.map((docSnap) => {
+            const data = docSnap.data() as { deviceName?: string; userName?: string };
+            const deviceName = data.deviceName || docSnap.id.slice(0, 6);
+            const userName = (data.userName || "").trim();
+            return userName ? `${userName} - ${deviceName}` : deviceName;
+          });
+          setConnectedDeviceFullNames(fullNames);
         },
         (err) => {
           const code = (err as { code?: string }).code;
@@ -317,15 +309,6 @@ export default function OrgDashboardPage() {
   }, [params, router]);
 
   const handleSignOut = async () => {
-    if (typeof window !== "undefined" && uid) {
-      const keyPrefix = `ap:intro:${uid}:`;
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < window.sessionStorage.length; i += 1) {
-        const key = window.sessionStorage.key(i);
-        if (key && key.startsWith(keyPrefix)) keysToRemove.push(key);
-      }
-      keysToRemove.forEach((key) => window.sessionStorage.removeItem(key));
-    }
     await signOut(auth);
     router.replace("/sign-in");
   };
@@ -886,97 +869,39 @@ export default function OrgDashboardPage() {
           </div>
         </div>
       ) : null}
-      <AnimatePresence>
+      <AnimatePresence initial={false} mode="wait">
         {introOpen ? (
           <motion.div
-            className="fixed inset-0 z-[70] flex items-center justify-center px-6 bg-white"
+            key="org-intro"
+            className="fixed inset-0 z-[70] flex items-center justify-center px-6 bg-slate-950/40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.35 } }}
           >
-            <div className="max-w-xl w-full text-center">
-              <motion.div
-                className="mx-auto mb-6 w-40 h-40"
-                initial={{ scale: 0.94, opacity: 0.75 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.45, ease: easeOut }}
-              >
-                <svg
-                  viewBox="0 0 120 120"
-                  className="w-full h-full"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <motion.circle
-                    cx="60"
-                    cy="60"
-                    r="52"
-                    stroke="#bfdbfe"
-                    strokeWidth="2"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 8, ease: "easeInOut" }}
-                  />
-                  <motion.path
-                    d="M36 74C36 59 47 48 60 48C73 48 84 59 84 74"
-                    stroke="#2563eb"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 9.5, ease: "easeInOut", delay: 0.8 }}
-                  />
-                  <motion.path
-                    d="M48 49C48 42 53 37 60 37C67 37 72 42 72 49C72 56 67 61 60 61C53 61 48 56 48 49Z"
-                    stroke="#2563eb"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{
-                      duration: 9,
-                      ease: "easeInOut",
-                      delay: 1.4,
-                    }}
-                  />
-                  <motion.path
-                    d="M27 83H93"
-                    stroke="#60a5fa"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 6.5, ease: "easeInOut", delay: 3.2 }}
-                  />
-                </svg>
-              </motion.div>
-              <motion.h2
-                className="text-2xl font-black text-slate-900"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, ease: easeOut, delay: 0.4 }}
-              >
-                Preparing your workspace
-              </motion.h2>
-              <motion.p
-                className="text-sm text-slate-600 mt-2"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, ease: easeOut, delay: 0.5 }}
-              >
-                Loading events, guests, and live check-in tools.
-              </motion.p>
-              {introCanSkip ? (
-                <button
-                  type="button"
-                  className="mt-6 text-xs text-slate-500 hover:text-slate-800"
-                  onClick={closeIntro}
-                >
-                  Skip
-                </button>
-              ) : null}
-            </div>
+            <motion.div
+              className="w-full max-w-md rounded-3xl bg-white/95 border border-slate-200 shadow-2xl px-6 py-7 text-center"
+              initial={{ opacity: 0, y: 14, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.35, ease: easeOut }}
+            >
+              <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-blue-600 text-white grid place-items-center font-black">
+                AP
+              </div>
+              <h2 className="text-xl font-black text-slate-900">Getting things ready</h2>
+              <p className="text-sm text-slate-600 mt-2">
+                {org?.name ? `Opening ${org.name}…` : "Opening your workspace…"}
+              </p>
+              <div className="mt-5 h-2 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: introAnimationMs / 1000, ease: "linear" }}
+                />
+              </div>
+              <div className="mt-4 text-xs text-slate-500">Loading events, guests, and live check-in tools.</div>
+            </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -1005,10 +930,10 @@ export default function OrgDashboardPage() {
                 {connectedDevices} device{connectedDevices === 1 ? "" : "s"} currently connected.
               </p>
               <div className="max-h-72 overflow-y-auto rounded-2xl border border-slate-200">
-                {connectedDeviceNames.length === 0 ? (
+                {connectedDeviceFullNames.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-slate-500">No active devices.</div>
                 ) : (
-                  connectedDeviceNames.map((deviceName, index) => (
+                  connectedDeviceFullNames.map((deviceName, index) => (
                     <div
                       key={`${deviceName}-${index}`}
                       className="px-4 py-3 text-sm border-t border-slate-100 first:border-t-0"
