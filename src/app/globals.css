@@ -3,17 +3,29 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2e8f0;
+  --muted: #64748b;
 }
 
 :root[data-theme="light"] {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2e8f0;
+  --muted: #64748b;
   color-scheme: light;
 }
 
 :root[data-theme="dark"] {
   --background: #0b1220;
   --foreground: #e5e7eb;
+  --surface: #0f172a;
+  --surface-2: #0b1220;
+  --border: #1f2937;
+  --muted: #94a3b8;
   color-scheme: dark;
 }
 
@@ -27,9 +39,14 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ffffff;
-    --foreground: #171717;
+  :root:not([data-theme]) {
+    --background: #0b1220;
+    --foreground: #e5e7eb;
+    --surface: #0f172a;
+    --surface-2: #0b1220;
+    --border: #1f2937;
+    --muted: #94a3b8;
+    color-scheme: dark;
   }
 }
 
