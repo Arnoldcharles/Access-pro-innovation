@@ -3,9 +3,14 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --background-rgb: 255 255 255;
+  --foreground-rgb: 23 23 23;
   --surface: #ffffff;
   --surface-2: #f8fafc;
   --surface-3: #f1f5f9;
+  --surface-rgb: 255 255 255;
+  --surface-2-rgb: 248 250 252;
+  --surface-3-rgb: 241 245 249;
   --border: #e2e8f0;
   --muted: #64748b;
 }
@@ -13,9 +18,14 @@
 :root[data-theme="light"] {
   --background: #ffffff;
   --foreground: #171717;
+  --background-rgb: 255 255 255;
+  --foreground-rgb: 23 23 23;
   --surface: #ffffff;
   --surface-2: #f8fafc;
   --surface-3: #f1f5f9;
+  --surface-rgb: 255 255 255;
+  --surface-2-rgb: 248 250 252;
+  --surface-3-rgb: 241 245 249;
   --border: #e2e8f0;
   --muted: #64748b;
   color-scheme: light;
@@ -24,9 +34,14 @@
 :root[data-theme="dark"] {
   --background: #0b1220;
   --foreground: #e5e7eb;
+  --background-rgb: 11 18 32;
+  --foreground-rgb: 229 231 235;
   --surface: #0f172a;
   --surface-2: #0b1220;
   --surface-3: #111c33;
+  --surface-rgb: 15 23 42;
+  --surface-2-rgb: 11 18 32;
+  --surface-3-rgb: 17 28 51;
   --border: #1f2937;
   --muted: #94a3b8;
   color-scheme: dark;
@@ -45,10 +60,16 @@
   :root:not([data-theme]) {
     --background: #0b1220;
     --foreground: #e5e7eb;
+    --background-rgb: 11 18 32;
+    --foreground-rgb: 229 231 235;
     --surface: #0f172a;
     --surface-2: #0b1220;
     --border: #1f2937;
     --muted: #94a3b8;
+    --surface-rgb: 15 23 42;
+    --surface-2-rgb: 11 18 32;
+    --surface-3: #111c33;
+    --surface-3-rgb: 17 28 51;
     color-scheme: dark;
   }
 }
@@ -62,6 +83,14 @@ body {
 /* Theme shim: map common Tailwind colors to CSS variables for dark mode */
 :root[data-theme="dark"] .bg-white {
   background-color: var(--surface) !important;
+}
+
+:root[data-theme="dark"] .bg-white\/90 {
+  background-color: rgb(var(--surface-2-rgb) / 0.9) !important;
+}
+
+:root[data-theme="dark"] .bg-white\/95 {
+  background-color: rgb(var(--surface-rgb) / 0.95) !important;
 }
 
 :root[data-theme="dark"] .bg-slate-50 {
