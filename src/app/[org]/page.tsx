@@ -263,8 +263,10 @@ export default function OrgDashboardPage() {
           setConnectedDeviceNames(
             activeDocs
               .map((docSnap) => {
-                const data = docSnap.data() as { deviceName?: string };
-                return data.deviceName || docSnap.id.slice(0, 6);
+                const data = docSnap.data() as { deviceName?: string; userName?: string };
+                const deviceName = data.deviceName || docSnap.id.slice(0, 6);
+                const userName = (data.userName || "").trim();
+                return userName ? `${userName} — ${deviceName}` : deviceName;
               }),
           );
         },
