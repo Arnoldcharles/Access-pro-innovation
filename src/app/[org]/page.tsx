@@ -511,6 +511,13 @@ export default function OrgDashboardPage() {
                       {item.name ?? item.slug}
                     </Link>
                   ))}
+                  <Link
+                    className="block px-4 py-2 hover:bg-slate-50"
+                    href={`/${params.org}/settings`}
+                    onClick={() => setOrgMenuOpen(false)}
+                  >
+                    Settings
+                  </Link>
                   <button
                     type="button"
                     className={`w-full text-left px-4 py-2 ${

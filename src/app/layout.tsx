@@ -90,6 +90,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${plusJakartaSans.variable} antialiased`}>
+        <Script id="ap-theme-init" strategy="beforeInteractive">
+          {`(function () {
+  try {
+    var theme = window.localStorage.getItem('ap:theme');
+    if (theme) document.documentElement.dataset.theme = theme;
+  } catch (e) {}
+})();`}
+        </Script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
