@@ -6,13 +6,20 @@ import {
   ArrowRight,
   BarChart3,
   CalendarPlus,
+  Check,
   CheckCircle2,
   Crown,
+  FileSpreadsheet,
+  FileUp,
+  HelpCircle,
   LayoutDashboard,
+  ListChecks,
   PhoneCall,
   QrCode,
   Rocket,
   Settings,
+  ShieldCheck,
+  Smartphone,
   Sparkles,
   Users,
   Zap,
@@ -22,6 +29,17 @@ import React, { useMemo, useState } from "react";
 export default function JoinOrgPage() {
   const [tab, setTab] = useState<"how" | "dashboard" | "pricing">("how");
   const [activeStep, setActiveStep] = useState(1);
+  const [templateId, setTemplateId] = useState<
+    "conference" | "concert" | "wedding" | "church"
+  >("conference");
+  const [checklist, setChecklist] = useState({
+    org: false,
+    event: false,
+    guests: false,
+    scan: false,
+  });
+  const [desiredOrgs, setDesiredOrgs] = useState(1);
+  const [desiredEventsPerOrg, setDesiredEventsPerOrg] = useState(1);
 
   const steps = useMemo(
     () => [
@@ -65,6 +83,82 @@ export default function JoinOrgPage() {
   );
 
   const selectedStep = steps.find((s) => s.id === activeStep) ?? steps[0];
+
+  const templates = useMemo(
+    () => [
+      {
+        id: "conference" as const,
+        label: "Conference",
+        icon: FileSpreadsheet,
+        tips: [
+          "Add sessions as separate events if you need separate guest lists.",
+          "Use check-in scan to reduce queues at the entrance.",
+          "Keep 2–3 devices connected for faster flow.",
+        ],
+      },
+      {
+        id: "concert" as const,
+        label: "Concert",
+        icon: Zap,
+        tips: [
+          "Prepare guests early and test scanning before gates open.",
+          "Use multiple scanners at peak time.",
+          "Watch scan speed to spot bottlenecks.",
+        ],
+      },
+      {
+        id: "wedding" as const,
+        label: "Wedding",
+        icon: Users,
+        tips: [
+          "Create VIP and Regular guest groups (separate lists if needed).",
+          "Use quick search for walk-ins and name lookups.",
+          "One scanner is usually enough for smaller guest counts.",
+        ],
+      },
+      {
+        id: "church" as const,
+        label: "Church",
+        icon: ShieldCheck,
+        tips: [
+          "Use QR for special programs and large gatherings.",
+          "Keep attendance history for planning future services.",
+          "Set a consistent naming pattern for events (date + title).",
+        ],
+      },
+    ],
+    [],
+  );
+
+  const faqs = useMemo(
+    () => [
+      {
+        q: "Can I scan with my phone?",
+        a: "Yes. Open the event scanner and use your phone camera. Your results update live on the dashboard.",
+      },
+      {
+        q: "Do multiple devices sync?",
+        a: "Yes. When multiple devices are connected, check-ins and activity stay in sync in real time.",
+      },
+      {
+        q: "How do I add guests quickly?",
+        a: "You can add guests manually, or use a spreadsheet workflow (recommended for larger events).",
+      },
+      {
+        q: "What if I hit Free limits?",
+        a: "You'll see a prompt when limits are reached. You can upgrade anytime on the pricing page.",
+      },
+    ],
+    [],
+  );
+
+  const checklistTotal = 4;
+  const checklistDone = Object.values(checklist).filter(Boolean).length;
+  const checklistPercent = Math.round((checklistDone / checklistTotal) * 100);
+
+  const freeFits = desiredOrgs <= 2 && desiredEventsPerOrg <= 5;
+  const selectedTemplate =
+    templates.find((t) => t.id === templateId) ?? templates[0];
 
   const fadeUp = {
     hidden: { opacity: 0, y: 12 },
@@ -206,7 +300,7 @@ export default function JoinOrgPage() {
                               onClick={() => setActiveStep(step.id)}
                               className={`w-full text-left rounded-2xl border px-4 py-3 transition ${
                                 selected
-                                  ? "border-blue-600 bg-blue-50"
+                                  ? "border-blue-600 bg-[color:var(--surface)]"
                                   : "border-[color:var(--border)] bg-[color:var(--surface-2)] hover:bg-slate-100"
                               }`}
                               whileHover={{ y: -1 }}
@@ -217,7 +311,7 @@ export default function JoinOrgPage() {
                                   <div
                                     className={`h-9 w-9 rounded-2xl grid place-items-center border ${
                                       selected
-                                        ? "border-blue-200 bg-white"
+                                        ? "border-blue-500/30 bg-white"
                                         : "border-[color:var(--border)] bg-[color:var(--surface)]"
                                     }`}
                                   >
@@ -373,14 +467,14 @@ export default function JoinOrgPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="rounded-3xl border border-blue-200 bg-blue-50 p-6">
+                    <div className="rounded-3xl border border-blue-500/25 bg-[color:var(--surface-2)] p-6">
                       <div className="inline-flex items-center gap-2 rounded-full bg-white/90 border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-800">
                         <Crown size={14} />
                         PRO
                       </div>
                       <div className="mt-3 text-sm font-black">Pro</div>
-                      <div className="mt-1 text-xs text-blue-700/90">For growing teams and larger events</div>
-                      <div className="mt-5 grid gap-2 text-sm text-blue-900">
+                      <div className="mt-1 text-xs text-[color:var(--muted)]">For growing teams and larger events</div>
+                      <div className="mt-5 grid gap-2 text-sm">
                         {[
                           "More organizations",
                           "More events",
@@ -402,10 +496,251 @@ export default function JoinOrgPage() {
                       </Link>
                     </div>
                   </div>
+
+                  <div className="mt-6 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">Quick limits check</div>
+                        <div className="mt-1 text-xs text-[color:var(--muted)]">
+                          Estimate what you need and we’ll recommend Free or Pro.
+                        </div>
+                      </div>
+                      <div
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                          freeFits
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : "border-amber-200 bg-amber-50 text-amber-800"
+                        }`}
+                      >
+                        {freeFits ? "Free fits" : "Pro recommended"}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
+                        <label className="text-xs uppercase tracking-widest text-[color:var(--muted)]">
+                          Organizations
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={desiredOrgs}
+                          onChange={(event) => setDesiredOrgs(Number(event.target.value || 1))}
+                          className="mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3 text-sm text-[color:var(--foreground)]"
+                        />
+                      </div>
+                      <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
+                        <label className="text-xs uppercase tracking-widest text-[color:var(--muted)]">
+                          Events per org
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={desiredEventsPerOrg}
+                          onChange={(event) =>
+                            setDesiredEventsPerOrg(Number(event.target.value || 1))
+                          }
+                          className="mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3 text-sm text-[color:var(--foreground)]"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               ) : null}
             </AnimatePresence>
           </div>
+        </motion.div>
+
+        <motion.div variants={fadeUp} className="mt-6 grid gap-3 lg:grid-cols-3">
+          <motion.div
+            className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-sm"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-black tracking-widest uppercase text-[color:var(--muted)]">
+                  Checklist
+                </div>
+                <div className="mt-2 text-lg font-black">Ready for scan day</div>
+                <div className="mt-2 text-sm text-[color:var(--muted)]">
+                  Track your setup progress.
+                </div>
+              </div>
+              <div className="h-10 w-10 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] grid place-items-center">
+                <ListChecks size={16} />
+              </div>
+            </div>
+
+            <div className="mt-5 h-2 rounded-full bg-[color:var(--surface-2)] overflow-hidden border border-[color:var(--border)]">
+              <motion.div
+                className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600"
+                initial={{ width: "0%" }}
+                animate={{ width: `${checklistPercent}%` }}
+                transition={{ duration: 0.4 }}
+              />
+            </div>
+            <div className="mt-2 text-xs text-[color:var(--muted)]">
+              {checklistDone}/{checklistTotal} done ({checklistPercent}%)
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              {[
+                { key: "org" as const, label: "Create organization", icon: Rocket },
+                { key: "event" as const, label: "Create event", icon: CalendarPlus },
+                { key: "guests" as const, label: "Upload guest list", icon: FileUp },
+                { key: "scan" as const, label: "Test scanner", icon: Smartphone },
+              ].map((item) => {
+                const checked = checklist[item.key];
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() =>
+                      setChecklist((prev) => ({ ...prev, [item.key]: !prev[item.key] }))
+                    }
+                    className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3 text-left hover:bg-slate-100"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] grid place-items-center">
+                          <Icon size={16} />
+                        </div>
+                        <div className="text-sm font-semibold">{item.label}</div>
+                      </div>
+                      <div
+                        className={`h-7 w-7 rounded-full border grid place-items-center ${
+                          checked
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                            : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--muted)]"
+                        }`}
+                      >
+                        {checked ? <Check size={16} /> : null}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-sm"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-black tracking-widest uppercase text-[color:var(--muted)]">
+                  Templates
+                </div>
+                <div className="mt-2 text-lg font-black">Pick your event type</div>
+                <div className="mt-2 text-sm text-[color:var(--muted)]">
+                  Quick tips based on how you run your event.
+                </div>
+              </div>
+              <div className="h-10 w-10 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] grid place-items-center">
+                <HelpCircle size={16} />
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTemplateId(t.id)}
+                  className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${
+                    templateId === t.id
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--foreground)] hover:bg-slate-100"
+                  }`}
+                >
+                  <t.icon size={16} />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={selectedTemplate.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.2 }}
+                className="mt-5 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-5"
+              >
+                <div className="text-sm font-semibold">{selectedTemplate.label} tips</div>
+                <div className="mt-3 grid gap-2 text-sm text-[color:var(--muted)]">
+                  {selectedTemplate.tips.map((tip) => (
+                    <div key={tip} className="flex items-start gap-2">
+                      <CheckCircle2 size={16} className="mt-0.5 opacity-80" />
+                      <span>{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+
+          <motion.div
+            className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-sm"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-black tracking-widest uppercase text-[color:var(--muted)]">
+                  FAQ
+                </div>
+                <div className="mt-2 text-lg font-black">Common questions</div>
+                <div className="mt-2 text-sm text-[color:var(--muted)]">
+                  Quick answers before you start.
+                </div>
+              </div>
+              <div className="h-10 w-10 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] grid place-items-center">
+                <ShieldCheck size={16} />
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-2">
+              {faqs.map((item) => (
+                <details
+                  key={item.q}
+                  className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3"
+                >
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    {item.q}
+                  </summary>
+                  <div className="mt-2 text-sm text-[color:var(--muted)]">
+                    {item.a}
+                  </div>
+                </details>
+              ))}
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-semibold">Want a guided setup?</div>
+                  <div className="mt-1 text-xs text-[color:var(--muted)]">
+                    We can help you configure your first event.
+                  </div>
+                </div>
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Talk to us
+                  <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       </motion.div>
     </div>
