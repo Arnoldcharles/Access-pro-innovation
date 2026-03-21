@@ -25,7 +25,8 @@ const getDeviceId = () => {
 };
 
 const getDeviceLabel = (deviceId: string) => {
-  if (typeof navigator === "undefined") return `Device - ${deviceId.slice(0, 6)}`;
+  if (typeof navigator === "undefined")
+    return `Device - ${deviceId.slice(0, 6)}`;
 
   const ua = navigator.userAgent || "";
   const uaLower = ua.toLowerCase();
@@ -34,8 +35,14 @@ const getDeviceLabel = (deviceId: string) => {
     if (uaLower.includes("edg/")) return "Edge";
     if (uaLower.includes("opr/") || uaLower.includes("opera")) return "Opera";
     if (uaLower.includes("firefox/")) return "Firefox";
-    if (uaLower.includes("chrome/") && !uaLower.includes("edg/") && !uaLower.includes("opr/")) return "Chrome";
-    if (uaLower.includes("safari/") && !uaLower.includes("chrome/")) return "Safari";
+    if (
+      uaLower.includes("chrome/") &&
+      !uaLower.includes("edg/") &&
+      !uaLower.includes("opr/")
+    )
+      return "Chrome";
+    if (uaLower.includes("safari/") && !uaLower.includes("chrome/"))
+      return "Safari";
     return "";
   })();
 
@@ -51,7 +58,8 @@ const getDeviceLabel = (deviceId: string) => {
       return "Android";
     }
     if (uaLower.includes("windows")) return "Windows PC";
-    if (uaLower.includes("macintosh") || uaLower.includes("mac os x")) return "Mac";
+    if (uaLower.includes("macintosh") || uaLower.includes("mac os x"))
+      return "Mac";
     if (uaLower.includes("linux")) return "Linux";
     return "Device";
   })();
@@ -85,7 +93,9 @@ export default function OrgPresenceTracker() {
           deviceName,
           online,
           userAgent:
-            typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 240) : "",
+            typeof navigator !== "undefined"
+              ? navigator.userAgent.slice(0, 240)
+              : "",
           lastSeen: serverTimestamp(),
         },
         { merge: true },
@@ -97,7 +107,9 @@ export default function OrgPresenceTracker() {
       uid = user.uid;
       try {
         const userSnap = await getDoc(doc(db, "users", uid));
-        userName = userSnap.exists() ? ((userSnap.data() as { name?: string }).name || "") : "";
+        userName = userSnap.exists()
+          ? (userSnap.data() as { name?: string }).name || ""
+          : "";
       } catch {
         userName = "";
       }

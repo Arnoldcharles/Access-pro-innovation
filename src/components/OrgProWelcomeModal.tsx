@@ -44,9 +44,13 @@ export default function OrgProWelcomeModal() {
         if (data.plan !== "pro") return;
 
         const expiryMs = toMillis(data.proExpiresAt);
-        const cycleId = typeof expiryMs === "number" ? String(expiryMs) : "active";
+        const cycleId =
+          typeof expiryMs === "number" ? String(expiryMs) : "active";
         const storageKey = `ap:pro-welcome:${user.uid}:${orgSlug}:${cycleId}`;
-        if (typeof window !== "undefined" && window.localStorage.getItem(storageKey) === "1") {
+        if (
+          typeof window !== "undefined" &&
+          window.localStorage.getItem(storageKey) === "1"
+        ) {
           return;
         }
         setSeenKey(storageKey);
@@ -90,7 +94,12 @@ export default function OrgProWelcomeModal() {
           />
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.94 }}
-            animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: easeOut } }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              transition: { duration: 0.45, ease: easeOut },
+            }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             className="relative z-10 w-full max-w-[540px] overflow-hidden rounded-3xl border border-blue-200 bg-white p-7 shadow-2xl"
           >
@@ -102,7 +111,11 @@ export default function OrgProWelcomeModal() {
             <motion.div
               className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-blue-400/30 blur-3xl"
               animate={{ scale: [1.06, 1, 1.06] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+              transition={{
+                duration: 3.4,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
             />
             <div className="relative">
               <motion.div
@@ -167,4 +180,3 @@ export default function OrgProWelcomeModal() {
     </AnimatePresence>
   );
 }
-

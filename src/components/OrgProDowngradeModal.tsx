@@ -50,7 +50,8 @@ export default function OrgProDowngradeModal() {
             : null;
 
         const expiryMs = toMillis(data.proExpiresAt);
-        const cycleId = typeof expiryMs === "number" ? String(expiryMs) : "none";
+        const cycleId =
+          typeof expiryMs === "number" ? String(expiryMs) : "none";
         const downgradeKey = `ap:pro-downgrade:${user.uid}:${orgSlug}:${cycleId}`;
 
         if (
@@ -105,7 +106,12 @@ export default function OrgProDowngradeModal() {
           />
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.42, ease: easeOut } }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              transition: { duration: 0.42, ease: easeOut },
+            }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             className="relative z-10 w-full max-w-[520px] overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 shadow-2xl"
           >
@@ -121,7 +127,13 @@ export default function OrgProDowngradeModal() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35 }}
                 >
-                  <circle cx="24" cy="24" r="18" stroke="#475569" strokeWidth="2.2" />
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="18"
+                    stroke="#475569"
+                    strokeWidth="2.2"
+                  />
                   <motion.path
                     d="M18 20h.01M30 20h.01"
                     stroke="#475569"
@@ -207,4 +219,3 @@ export default function OrgProDowngradeModal() {
     </AnimatePresence>
   );
 }
-

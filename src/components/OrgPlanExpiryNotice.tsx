@@ -60,7 +60,10 @@ export default function OrgPlanExpiryNotice() {
       if (!nextLevel) return;
 
       const storageKey = `ap:pro-expiry-notice:${user.uid}:${orgSlug}:${nextLevel}:${expiryMs}`;
-      if (typeof window !== "undefined" && window.localStorage.getItem(storageKey) === "1") {
+      if (
+        typeof window !== "undefined" &&
+        window.localStorage.getItem(storageKey) === "1"
+      ) {
         return;
       }
 
@@ -97,7 +100,9 @@ export default function OrgPlanExpiryNotice() {
         onClick={close}
       />
       <div className="relative z-10 w-full max-w-[440px] rounded-3xl border border-amber-200 bg-white p-6 shadow-2xl animate-[fadeIn_0.25s_ease-out]">
-        <h3 className="text-lg font-bold text-slate-900 mb-2">Subscription expiring soon</h3>
+        <h3 className="text-lg font-bold text-slate-900 mb-2">
+          Subscription expiring soon
+        </h3>
         <p className="text-sm text-slate-700">{message}</p>
         {expiresAtMs ? (
           <p className="text-xs text-slate-500 mt-2">
@@ -124,4 +129,3 @@ export default function OrgPlanExpiryNotice() {
     </div>
   );
 }
-

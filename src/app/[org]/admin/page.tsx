@@ -42,7 +42,9 @@ export default function AdminPage() {
   const [uid, setUid] = useState("");
   const [users, setUsers] = useState<UserItem[]>([]);
   const [orgs, setOrgs] = useState<OrgItem[]>([]);
-  const [proDurationByOrg, setProDurationByOrg] = useState<Record<string, number>>({});
+  const [proDurationByOrg, setProDurationByOrg] = useState<
+    Record<string, number>
+  >({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -74,7 +76,7 @@ export default function AdminPage() {
         const code = (err as { code?: string }).code;
         if (code === "permission-denied") return;
         console.error(err);
-      }
+      },
     );
     const unsubOrgs = onSnapshot(
       collection(db, "orgs"),
@@ -89,7 +91,7 @@ export default function AdminPage() {
         const code = (err as { code?: string }).code;
         if (code === "permission-denied") return;
         console.error(err);
-      }
+      },
     );
     return () => {
       unsubUsers();
@@ -112,7 +114,8 @@ export default function AdminPage() {
     return users
       .filter((user) => {
         if (!normalized) return true;
-        const haystack = `${user.name ?? ""} ${user.email ?? ""} ${user.orgName ?? ""} ${user.orgSlug ?? ""}`.toLowerCase();
+        const haystack =
+          `${user.name ?? ""} ${user.email ?? ""} ${user.orgName ?? ""} ${user.orgSlug ?? ""}`.toLowerCase();
         return haystack.includes(normalized);
       })
       .map((user) => ({
@@ -122,7 +125,10 @@ export default function AdminPage() {
   }, [users, orgsByOwner, search]);
 
   const setOrgFree = async (orgId: string) => {
-    await updateDoc(doc(db, "orgs", orgId), { plan: "free", proExpiresAt: null });
+    await updateDoc(doc(db, "orgs", orgId), {
+      plan: "free",
+      proExpiresAt: null,
+    });
   };
 
   const setOrgProDuration = async (orgId: string, days: number) => {
@@ -143,7 +149,9 @@ export default function AdminPage() {
     await updateDoc(doc(db, "users", userId), { blocked: nextBlocked });
     const owned = orgsByOwner.get(userId) ?? [];
     await Promise.all(
-      owned.map((org) => updateDoc(doc(db, "orgs", org.id), { blocked: nextBlocked })),
+      owned.map((org) =>
+        updateDoc(doc(db, "orgs", org.id), { blocked: nextBlocked }),
+      ),
     );
   };
 
@@ -166,8 +174,13 @@ export default function AdminPage() {
       <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center px-6">
         <div className="max-w-[520px] text-center">
           <h1 className="text-2xl font-black mb-2">Admin access only</h1>
-          <p className="text-slate-600 mb-6">You do not have permission to view this page.</p>
-          <Link className="px-4 py-2 rounded-2xl bg-slate-900 text-white" href={`/${params.org}`}>
+          <p className="text-slate-600 mb-6">
+            You do not have permission to view this page.
+          </p>
+          <Link
+            className="px-4 py-2 rounded-2xl bg-slate-900 text-white"
+            href={`/${params.org}`}
+          >
             Back to dashboard
           </Link>
         </div>
@@ -182,10 +195,15 @@ export default function AdminPage() {
           <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
             <div>
               <h1 className="text-3xl font-black">Admin dashboard</h1>
-              <p className="text-slate-600 text-sm">Manage org plans by owner.</p>
+              <p className="text-slate-600 text-sm">
+                Manage org plans by owner.
+              </p>
             </div>
             <div className="flex items-center gap-3">
-              <Link className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm" href={`/${params.org}`}>
+              <Link
+                className="px-4 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm"
+                href={`/${params.org}`}
+              >
                 Back to dashboard
               </Link>
               <button
@@ -212,15 +230,23 @@ export default function AdminPage() {
               <div className="text-sm text-slate-500">No users found.</div>
             ) : (
               rows.map(({ user, orgs: ownedOrgs }) => (
-                <div key={user.id} className="p-5 border border-slate-200 rounded-3xl bg-white shadow-sm">
+                <div
+                  key={user.id}
+                  className="p-5 border border-slate-200 rounded-3xl bg-white shadow-sm"
+                >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="font-semibold">{user.name ?? "Unnamed user"}</div>
-                      <div className="text-xs text-slate-500">{user.email ?? user.id}</div>
+                      <div className="font-semibold">
+                        {user.name ?? "Unnamed user"}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {user.email ?? user.id}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-xs text-slate-500">
-                        {ownedOrgs.length} org{ownedOrgs.length === 1 ? "" : "s"}
+                        {ownedOrgs.length} org
+                        {ownedOrgs.length === 1 ? "" : "s"}
                       </div>
                       <button
                         type="button"
@@ -229,26 +255,44 @@ export default function AdminPage() {
                             ? "bg-rose-600 text-white"
                             : "bg-slate-100 text-slate-700"
                         }`}
-                        onClick={() => toggleUserBlocked(user.id, (user as { blocked?: boolean }).blocked)}
+                        onClick={() =>
+                          toggleUserBlocked(
+                            user.id,
+                            (user as { blocked?: boolean }).blocked,
+                          )
+                        }
                       >
-                        {(user as { blocked?: boolean }).blocked ? "Unblock user" : "Block user"}
+                        {(user as { blocked?: boolean }).blocked
+                          ? "Unblock user"
+                          : "Block user"}
                       </button>
                     </div>
                   </div>
                   <div className="mt-4 grid sm:grid-cols-2 gap-3">
                     {ownedOrgs.length === 0 ? (
-                      <div className="text-sm text-slate-500">No orgs for this user.</div>
+                      <div className="text-sm text-slate-500">
+                        No orgs for this user.
+                      </div>
                     ) : (
                       ownedOrgs.map((org) => (
-                        <div key={org.id} className="p-4 border border-slate-200 rounded-2xl flex items-center justify-between">
+                        <div
+                          key={org.id}
+                          className="p-4 border border-slate-200 rounded-2xl flex items-center justify-between"
+                        >
                           <div>
-                            <div className="font-semibold">{org.name ?? org.id}</div>
-                            <div className="text-xs text-slate-500">/{org.id}</div>
+                            <div className="font-semibold">
+                              {org.name ?? org.id}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              /{org.id}
+                            </div>
                             <div className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">
                               Pro expiry: {formatExpiry(org.proExpiresAt)}
                             </div>
                             {(org as { blocked?: boolean }).blocked ? (
-                              <div className="mt-1 text-[10px] uppercase tracking-widest text-rose-500">Blocked</div>
+                              <div className="mt-1 text-[10px] uppercase tracking-widest text-rose-500">
+                                Blocked
+                              </div>
                             ) : null}
                           </div>
                           <div className="flex flex-col items-end gap-2">
@@ -271,7 +315,12 @@ export default function AdminPage() {
                               <button
                                 type="button"
                                 className="px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white"
-                                onClick={() => setOrgProDuration(org.id, proDurationByOrg[org.id] ?? 30)}
+                                onClick={() =>
+                                  setOrgProDuration(
+                                    org.id,
+                                    proDurationByOrg[org.id] ?? 30,
+                                  )
+                                }
                               >
                                 Set Pro
                               </button>
@@ -290,9 +339,16 @@ export default function AdminPage() {
                                   ? "bg-rose-600 text-white"
                                   : "bg-slate-100 text-slate-700"
                               }`}
-                              onClick={() => toggleOrgBlocked(org.id, (org as { blocked?: boolean }).blocked)}
+                              onClick={() =>
+                                toggleOrgBlocked(
+                                  org.id,
+                                  (org as { blocked?: boolean }).blocked,
+                                )
+                              }
                             >
-                              {(org as { blocked?: boolean }).blocked ? "Unblock org" : "Block org"}
+                              {(org as { blocked?: boolean }).blocked
+                                ? "Unblock org"
+                                : "Block org"}
                             </button>
                           </div>
                         </div>
