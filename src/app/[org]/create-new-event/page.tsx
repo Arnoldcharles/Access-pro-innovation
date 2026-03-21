@@ -188,7 +188,7 @@ export default function CreateEventPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 font-sans antialiased flex items-center justify-center">
+      <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased flex items-center justify-center">
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <span className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-blue-600 animate-spin" />
           Loading create event...
@@ -198,7 +198,7 @@ export default function CreateEventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased">
       <div className="max-w-[720px] mx-auto px-6 sm:px-10 py-16">
         <motion.div initial="hidden" animate="show" variants={fadeUp}>
           <Link className="text-sm text-slate-600 hover:text-slate-900" href={`/${params.org}`}>

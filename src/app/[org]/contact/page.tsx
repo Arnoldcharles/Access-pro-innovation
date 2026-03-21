@@ -20,7 +20,7 @@ export default function OrgContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased">
       <div className="max-w-[1100px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
         <motion.nav
           initial="hidden"
@@ -45,7 +45,7 @@ export default function OrgContactPage() {
           </div>
           <h1 className="text-4xl md:text-6xl font-black leading-tight">Let's plan your next event together.</h1>
           <p className="text-slate-600 mt-4 max-w-2xl text-lg leading-relaxed">
-            Tell us about your event size, timeline, and goals. Weâ€™ll map out the best AccessPro Innovation workflow for your team.
+            Tell us about your event size, timeline, and goals. We'll map out the best AccessPro Innovation workflow for your team.
           </p>
         </motion.header>
 
@@ -65,7 +65,7 @@ export default function OrgContactPage() {
 
           <motion.div variants={fadeUp} className="space-y-4">
             {[
-              { label: "Email", value: "AccessPro Innovationinnovation@gmail.com", icon: <Mail size={18} /> },
+              { label: "Email", value: "accessproinnovation@gmail.com", icon: <Mail size={18} /> },
               { label: "Phone", value: "+234 81 3368 9639", icon: <PhoneCall size={18} /> },
               { label: "HQ", value: "12, Ogunbekun Street, Ladilak, Lagos, Nigeria", icon: <MapPin size={18} /> },
             ].map((item) => (

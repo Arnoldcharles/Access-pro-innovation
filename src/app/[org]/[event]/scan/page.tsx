@@ -314,7 +314,7 @@ export default function ScanPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased">
       <div className="max-w-[900px] mx-auto px-6 sm:px-10 py-12">
         <motion.div
           initial={{ opacity: 0, y: 12 }}

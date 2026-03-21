@@ -140,7 +140,7 @@ export default function EventDesignPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] flex items-center justify-center">
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <span className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-transparent animate-spin" />
           Loading design...
@@ -150,7 +150,7 @@ export default function EventDesignPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
         <motion.div
           initial={{ opacity: 0, y: 12 }}

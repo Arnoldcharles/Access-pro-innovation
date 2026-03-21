@@ -163,7 +163,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] flex items-center justify-center">
         <div className="text-sm text-slate-600">Loading admin…</div>
       </div>
     );
@@ -171,7 +171,7 @@ export default function AdminPage() {
 
   if (uid !== siteOwnerUid) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] flex items-center justify-center px-6">
         <div className="max-w-[520px] text-center">
           <h1 className="text-2xl font-black mb-2">Admin access only</h1>
           <p className="text-slate-600 mb-6">
@@ -189,7 +189,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
         <motion.div initial="hidden" animate="show" variants={fadeUp}>
           <div className="flex flex-wrap items-center justify-between gap-4 mb-8">

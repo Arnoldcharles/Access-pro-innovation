@@ -425,7 +425,7 @@ export default function OrgDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white text-slate-900 font-sans antialiased flex items-center justify-center">
+      <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased flex items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <span className="h-2 w-2 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.2s]" />
           <span className="h-2 w-2 rounded-full bg-blue-600 animate-bounce" />
@@ -437,7 +437,7 @@ export default function OrgDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased">
       <div className="max-w-[1200px] mx-auto px-6 sm:px-10 lg:px-16 py-12">
         <motion.nav
           initial="hidden"

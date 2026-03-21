@@ -87,7 +87,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="page-transition bg-[#f3f5f8] text-slate-900">
+    <main className="page-transition bg-[color:var(--surface-2)] text-[color:var(--foreground)]">
       <section ref={heroRef} className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.3),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(34,211,238,0.3),transparent_30%),linear-gradient(160deg,#070b1a_0%,#0a1737_50%,#111f44_100%)] px-4 pb-14 pt-16 sm:px-8">
         {/* subtle animated overlay matching original colors */}
         <div className="absolute inset-0 animate-bg-pan-original opacity-20"></div>
@@ -125,6 +125,90 @@ export default function HomePage() {
               >
                 Explore Features
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white px-4 py-16 sm:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid items-start gap-10 lg:grid-cols-2">
+            <div>
+              <p className="animate-fade-in-up text-xs font-bold uppercase tracking-[0.22em] text-sky-500">
+                Quick start
+              </p>
+              <h2
+                className="animate-fade-in-up mt-3 text-3xl font-black sm:text-4xl"
+                style={{ animationDelay: "100ms" }}
+              >
+                How you use the dashboard
+              </h2>
+              <p
+                className="animate-fade-in-up mt-3 text-slate-600"
+                style={{ animationDelay: "150ms" }}
+              >
+                Everything happens inside your organization workspace: create events, manage guests, and run live QR check-ins with real-time updates.
+              </p>
+              <div
+                className="animate-fade-in-up mt-6 flex flex-wrap gap-3"
+                style={{ animationDelay: "200ms" }}
+              >
+                <Link
+                  href="/join"
+                  className="btn-primary inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800 hover:shadow-lg"
+                >
+                  See the full guide <ArrowRight size={16} />
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="btn-primary rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:shadow-lg"
+                >
+                  Compare pricing
+                </Link>
+              </div>
+
+              <div
+                className="animate-fade-in-up mt-8 grid gap-3 text-sm text-slate-700"
+                style={{ animationDelay: "250ms" }}
+              >
+                {[
+                  "Create your organization (workspace)",
+                  "Create an event and share the page",
+                  "Upload / add guests and generate QR codes",
+                  "Scan QR codes live at the gate",
+                  "View attendance and flow insights",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="mt-0.5 text-sky-600 shrink-0" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                { title: "Create org", text: "Set up your workspace once.", icon: Sparkles },
+                { title: "Create event", text: "Add name, date, location.", icon: Users },
+                { title: "Add guests", text: "Upload lists or add manually.", icon: Zap },
+                { title: "Scan live", text: "Fast gate operations with QR.", icon: QrCode },
+              ].map((card, idx) => (
+                <AnimatedCard
+                  key={card.title}
+                  delay={idx + 1}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-5 hover:border-cyan-300 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-2xl bg-white border border-slate-200 grid place-items-center">
+                      <card.icon size={16} className="text-sky-600" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black">{card.title}</div>
+                      <div className="mt-1 text-xs text-slate-600">{card.text}</div>
+                    </div>
+                  </div>
+                </AnimatedCard>
+              ))}
             </div>
           </div>
         </div>
