@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/firebaseIdToken";
+import { normalizePhoneDigits } from "@/lib/phone";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -30,18 +31,6 @@ const asErrorMessage = (err: unknown) =>
 const buildWhatsAppTextBody = (textRaw: string, linkRaw: string) => {
   const parts = [textRaw.trim(), linkRaw.trim()].filter(Boolean);
   return parts.join("\n").trim().slice(0, 4096);
-};
-
-const normalizePhoneDigits = (value: string) => {
-  const digits = String(value ?? "").replace(/[^\d]/g, "");
-
-  // Nigeria-friendly normalization: 080..., 081..., 090... -> 23480..., etc.
-  // Most of your app's phone numbers (and schema telephone) are NG-based.
-  if (digits.length === 11 && digits.startsWith("0")) {
-    return `234${digits.slice(1)}`;
-  }
-
-  return digits;
 };
 
 const computeInviteSig = (secret: string, token: string, toDigits: string) => {
@@ -106,7 +95,7 @@ export async function POST(req: Request) {
     const textRaw = typeof body.text === "string" ? body.text : "";
     const linkRaw = typeof body.link === "string" ? body.link : "";
 
-    const to = normalizePhoneDigits(toRaw);
+    const to = normalizePhoneDigits(toRaw, { defaultCountryCallingCode: "234" });
     if (!to) {
       return NextResponse.json({ error: "Missing recipient phone number" }, { status: 400 });
     }

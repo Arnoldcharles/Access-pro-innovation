@@ -21,6 +21,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { formatPhoneWithPlus, normalizePhoneDigits } from "@/lib/phone";
 
 type EventData = {
   name?: string;
@@ -412,6 +413,39 @@ export default function EventDashboardPage() {
     if (firstWithSheet?.sheetColumns?.length) return firstWithSheet.sheetColumns;
     return ["firstName", "lastName", "phone", "email"];
   }, [combinedGuests, uploadedSheetColumns]);
+  const defaultCountryCallingCode = useMemo(() => {
+    const loc = (eventData?.location ?? location ?? "").toLowerCase();
+    if (loc.includes("nigeria") || loc.includes("lagos") || loc.includes("abuja")) return "234";
+    if (loc.includes("ghana") || loc.includes("accra")) return "233";
+    if (loc.includes("kenya") || loc.includes("nairobi")) return "254";
+    if (loc.includes("south africa") || loc.includes("johannesburg") || loc.includes("cape town"))
+      return "27";
+    if (loc.includes("united kingdom") || loc.includes("uk") || loc.includes("london")) return "44";
+    if (loc.includes("united states") || loc.includes("usa")) return "1";
+
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz === "Africa/Lagos") return "234";
+      if (tz === "Africa/Accra") return "233";
+      if (tz === "Africa/Nairobi") return "254";
+      if (tz === "Africa/Johannesburg") return "27";
+      if (tz === "Europe/London") return "44";
+      if (tz && tz.startsWith("America/")) return "1";
+    } catch {
+      // ignore
+    }
+
+    const locale = typeof navigator !== "undefined" ? navigator.language : "";
+    if (/-NG$/i.test(locale)) return "234";
+    if (/-GH$/i.test(locale)) return "233";
+    if (/-KE$/i.test(locale)) return "254";
+    if (/-ZA$/i.test(locale)) return "27";
+    if (/-GB$/i.test(locale)) return "44";
+    if (/-US$/i.test(locale)) return "1";
+
+    // App default (also matches server-side WhatsApp normalization).
+    return "234";
+  }, [eventData?.location, location]);
   const guestBucketsByName = useMemo(() => {
     const map = new Map<string, Guest[]>();
     combinedGuests.forEach((guest) => {
@@ -501,6 +535,14 @@ export default function EventDashboardPage() {
       setGuestError("First name, last name, and phone number are required.");
       return;
     }
+    const normalizedPhoneDigits = normalizePhoneDigits(guestPhone, {
+      defaultCountryCallingCode,
+    });
+    if (!normalizedPhoneDigits) {
+      setGuestError("Enter a valid phone number.");
+      return;
+    }
+    const normalizedPhone = `+${normalizedPhoneDigits}`;
     const fullName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
     setPendingGuests((prev) => [
       ...prev,
@@ -508,7 +550,7 @@ export default function EventDashboardPage() {
         firstName: guestFirstName.trim(),
         lastName: guestLastName.trim(),
         name: fullName,
-        phone: guestPhone.trim(),
+        phone: normalizedPhone,
         email: guestEmail.trim(),
         sourceType: "list",
         status: "invited",
@@ -674,6 +716,9 @@ export default function EventDashboardPage() {
       const explicitName = findColumn(["fullname", "name"]);
       const phone = findColumn(["phone", "mobile", "tel"]);
       const email = findColumn(["email", "mail"]);
+      const normalizedPhone = formatPhoneWithPlus(phone.trim(), {
+        defaultCountryCallingCode,
+      });
       const fallbackName = Object.values(rowMap).find((value) => value)?.trim() ?? "";
       const name =
         explicitName.trim() ||
@@ -683,7 +728,7 @@ export default function EventDashboardPage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         name,
-        phone: phone.trim(),
+        phone: normalizedPhone || phone.trim(),
         email: email.trim(),
         sourceType: "list" as const,
         sheetColumns: columns,
@@ -917,7 +962,9 @@ export default function EventDashboardPage() {
   const normalizeGuestKey = (guest: { email?: string; phone?: string }) => {
     const email = (guest.email ?? "").trim().toLowerCase();
     if (email) return `email:${email}`;
-    const phoneDigits = String(guest.phone ?? "").replace(/[^\d]/g, "");
+    const phoneDigits = normalizePhoneDigits(guest.phone ?? "", {
+      defaultCountryCallingCode,
+    });
     return phoneDigits ? `phone:${phoneDigits}` : "";
   };
 
@@ -937,12 +984,39 @@ export default function EventDashboardPage() {
       used?: boolean;
     };
 
-    const byKey = await getDocs(
-      query(invitesRef, where("guestKey", "==", guestKey), limit(1)),
-    );
-    if (!byKey.empty) {
-      const docSnap = byKey.docs[0];
-      return { id: docSnap.id, ...(docSnap.data() as Omit<ExistingInvite, "id">) } as ExistingInvite;
+    const tryKeys = async (keys: string[]) => {
+      for (const key of keys) {
+        const snap = await getDocs(
+          query(invitesRef, where("guestKey", "==", key), limit(1)),
+        );
+        if (!snap.empty) {
+          const docSnap = snap.docs[0];
+          return {
+            id: docSnap.id,
+            ...(docSnap.data() as Omit<ExistingInvite, "id">),
+          } as ExistingInvite;
+        }
+      }
+      return null as ExistingInvite | null;
+    };
+
+    const primary = (guestKey || "").trim();
+    if (primary) {
+      if (primary.startsWith("phone:")) {
+        const rawDigits = primary.slice("phone:".length);
+        const normalizedDigits = normalizePhoneDigits(rawDigits, {
+          defaultCountryCallingCode,
+        });
+        const alt =
+          normalizedDigits && normalizedDigits !== rawDigits
+            ? `phone:${normalizedDigits}`
+            : "";
+        const found = await tryKeys([primary, alt].filter(Boolean));
+        if (found) return found;
+      } else {
+        const found = await tryKeys([primary]);
+        if (found) return found;
+      }
     }
 
     // Backward-compatible fallback for older invite docs.
@@ -958,12 +1032,19 @@ export default function EventDashboardPage() {
     }
     if (guestKey.startsWith("phone:")) {
       const phone = guestKey.slice("phone:".length);
-      const byPhone = await getDocs(
-        query(invitesRef, where("guestPhone", "==", phone), limit(1)),
-      );
-      if (!byPhone.empty) {
-        const docSnap = byPhone.docs[0];
-        return { id: docSnap.id, ...(docSnap.data() as Omit<ExistingInvite, "id">) } as ExistingInvite;
+      const normalized = normalizePhoneDigits(phone, { defaultCountryCallingCode });
+      const candidates = [phone, normalized].filter(Boolean);
+      for (const candidate of candidates) {
+        const byPhone = await getDocs(
+          query(invitesRef, where("guestPhone", "==", candidate), limit(1)),
+        );
+        if (!byPhone.empty) {
+          const docSnap = byPhone.docs[0];
+          return {
+            id: docSnap.id,
+            ...(docSnap.data() as Omit<ExistingInvite, "id">),
+          } as ExistingInvite;
+        }
       }
     }
 
@@ -1383,7 +1464,9 @@ export default function EventDashboardPage() {
     setEditLastName(
       guest.lastName ?? fallbackName.split(" ").slice(1).join(" ") ?? "",
     );
-    setEditPhone(guest.phone);
+    setEditPhone(
+      formatPhoneWithPlus(guest.phone, { defaultCountryCallingCode }) || guest.phone,
+    );
     setEditEmail(guest.email);
   };
 
@@ -1405,6 +1488,14 @@ export default function EventDashboardPage() {
       return;
     }
     try {
+      const normalizedPhoneDigits = normalizePhoneDigits(editPhone, {
+        defaultCountryCallingCode,
+      });
+      if (!normalizedPhoneDigits) {
+        setGuestError("Enter a valid phone number.");
+        return;
+      }
+      const normalizedPhone = `+${normalizedPhoneDigits}`;
       const fullName = `${editFirstName.trim()} ${editLastName.trim()}`.trim();
       await updateDoc(
         doc(db, "orgs", orgSlug, "events", eventSlug, "guests", editingId),
@@ -1412,7 +1503,7 @@ export default function EventDashboardPage() {
           firstName: editFirstName.trim(),
           lastName: editLastName.trim(),
           name: fullName,
-          phone: editPhone.trim(),
+          phone: normalizedPhone,
           email: editEmail.trim(),
         },
       );
@@ -1893,9 +1984,17 @@ export default function EventDashboardPage() {
               />
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Phone number"
+                placeholder={`Phone number (e.g. +${defaultCountryCallingCode}...)`}
+                inputMode="tel"
+                autoComplete="tel"
                 value={guestPhone}
                 onChange={(event) => setGuestPhone(event.target.value)}
+                onBlur={() => {
+                  const formatted = formatPhoneWithPlus(guestPhone, {
+                    defaultCountryCallingCode,
+                  });
+                  if (formatted && formatted !== guestPhone) setGuestPhone(formatted);
+                }}
                 required
               />
               <input
@@ -2137,10 +2236,19 @@ export default function EventDashboardPage() {
                               />
                               <input
                                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
+                                placeholder={`Phone (e.g. +${defaultCountryCallingCode}...)`}
+                                inputMode="tel"
+                                autoComplete="tel"
                                 value={editPhone}
                                 onChange={(event) =>
                                   setEditPhone(event.target.value)
                                 }
+                                onBlur={() => {
+                                  const formatted = formatPhoneWithPlus(editPhone, {
+                                    defaultCountryCallingCode,
+                                  });
+                                  if (formatted && formatted !== editPhone) setEditPhone(formatted);
+                                }}
                               />
                               <input
                                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm"
