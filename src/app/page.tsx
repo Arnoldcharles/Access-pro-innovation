@@ -114,7 +114,7 @@ export default function HomePage() {
               style={{ animationDelay: "450ms" }}
             >
               <Link
-                href="/join"
+                href="/sign-in"
                 className="btn-primary rounded-full bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300 hover:shadow-lg"
               >
                 Sign up
