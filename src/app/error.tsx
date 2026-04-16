@@ -41,7 +41,7 @@ export default function ErrorPage({
               Go to home
             </Link>
             <Link
-              href="/contact"
+              href="tel:+2348133689639"
               className="px-5 py-2.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--foreground)] text-sm"
             >
               Contact support
@@ -50,7 +50,7 @@ export default function ErrorPage({
 
           {error?.digest ? (
             <div className="mt-6 text-xs text-[color:var(--muted)]">
-              Reference: {error.digest}
+              Reference: {error.digest}.
             </div>
           ) : null}
         </div>

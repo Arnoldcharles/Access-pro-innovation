@@ -140,7 +140,11 @@ const deserializeSheetLayout = (value: unknown): SheetLayout | null => {
     blocks?: unknown;
     rows?: unknown;
   };
-  if (!Array.isArray(raw.columns) || !Array.isArray(raw.blocks) || !Array.isArray(raw.rows)) {
+  if (
+    !Array.isArray(raw.columns) ||
+    !Array.isArray(raw.blocks) ||
+    !Array.isArray(raw.rows)
+  ) {
     return null;
   }
   const columns = raw.columns.map((column) => String(column ?? ""));
@@ -161,7 +165,11 @@ const deserializeSheetLayout = (value: unknown): SheetLayout | null => {
 };
 
 const toMillis = (
-  value?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null,
+  value?: {
+    toDate?: () => Date;
+    toMillis?: () => number;
+    seconds?: number;
+  } | null,
 ) => {
   if (!value) return null;
   if (typeof value.toMillis === "function") return value.toMillis();
@@ -195,7 +203,9 @@ export default function EventDashboardPage() {
   const [guestLimitModalOpen, setGuestLimitModalOpen] = useState(false);
   const [guestSaving, setGuestSaving] = useState(false);
   const [guestSearch, setGuestSearch] = useState("");
-  const [uploadedSheetColumns, setUploadedSheetColumns] = useState<string[]>([]);
+  const [uploadedSheetColumns, setUploadedSheetColumns] = useState<string[]>(
+    [],
+  );
   const [sheetLayout, setSheetLayout] = useState<SheetLayout | null>(null);
   const [uploadProcessing, setUploadProcessing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -282,7 +292,11 @@ export default function EventDashboardPage() {
       const orgData = orgSnap.data() as {
         name?: string;
         plan?: "free" | "pro";
-        proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
+        proExpiresAt?: {
+          toDate?: () => Date;
+          toMillis?: () => number;
+          seconds?: number;
+        } | null;
         blocked?: boolean;
       };
       if (orgData.blocked) {
@@ -292,11 +306,19 @@ export default function EventDashboardPage() {
         }, 1200);
         return;
       }
-      let effectivePlan: "free" | "pro" = orgData.plan === "pro" ? "pro" : "free";
+      let effectivePlan: "free" | "pro" =
+        orgData.plan === "pro" ? "pro" : "free";
       const expiryMs = toMillis(orgData.proExpiresAt);
-      if (effectivePlan === "pro" && typeof expiryMs === "number" && expiryMs <= Date.now()) {
+      if (
+        effectivePlan === "pro" &&
+        typeof expiryMs === "number" &&
+        expiryMs <= Date.now()
+      ) {
         try {
-          await updateDoc(doc(db, "orgs", orgSlug), { plan: "free", proExpiresAt: null });
+          await updateDoc(doc(db, "orgs", orgSlug), {
+            plan: "free",
+            proExpiresAt: null,
+          });
           effectivePlan = "free";
         } catch (err) {
           console.error(err);
@@ -304,36 +326,44 @@ export default function EventDashboardPage() {
       }
       setOrgName(orgData.name ?? "");
       setOrgPlan(effectivePlan);
-      liveOrgUnsub = onSnapshot(
-        doc(db, "orgs", orgSlug),
-        async (liveSnap) => {
-          if (!liveSnap.exists()) {
-            router.replace("/onboarding");
-            return;
+      liveOrgUnsub = onSnapshot(doc(db, "orgs", orgSlug), async (liveSnap) => {
+        if (!liveSnap.exists()) {
+          router.replace("/onboarding");
+          return;
+        }
+        const liveData = liveSnap.data() as {
+          name?: string;
+          plan?: "free" | "pro";
+          proExpiresAt?: {
+            toDate?: () => Date;
+            toMillis?: () => number;
+            seconds?: number;
+          } | null;
+          blocked?: boolean;
+        };
+        if (liveData.blocked) {
+          setBlockedOrgOpen(true);
+        }
+        let livePlan: "free" | "pro" = liveData.plan === "pro" ? "pro" : "free";
+        const liveExpiryMs = toMillis(liveData.proExpiresAt);
+        if (
+          livePlan === "pro" &&
+          typeof liveExpiryMs === "number" &&
+          liveExpiryMs <= Date.now()
+        ) {
+          try {
+            await updateDoc(doc(db, "orgs", orgSlug), {
+              plan: "free",
+              proExpiresAt: null,
+            });
+            livePlan = "free";
+          } catch (err) {
+            console.error(err);
           }
-          const liveData = liveSnap.data() as {
-            name?: string;
-            plan?: "free" | "pro";
-            proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
-            blocked?: boolean;
-          };
-          if (liveData.blocked) {
-            setBlockedOrgOpen(true);
-          }
-          let livePlan: "free" | "pro" = liveData.plan === "pro" ? "pro" : "free";
-          const liveExpiryMs = toMillis(liveData.proExpiresAt);
-          if (livePlan === "pro" && typeof liveExpiryMs === "number" && liveExpiryMs <= Date.now()) {
-            try {
-              await updateDoc(doc(db, "orgs", orgSlug), { plan: "free", proExpiresAt: null });
-              livePlan = "free";
-            } catch (err) {
-              console.error(err);
-            }
-          }
-          setOrgName(liveData.name ?? "");
-          setOrgPlan(livePlan);
-        },
-      );
+        }
+        setOrgName(liveData.name ?? "");
+        setOrgPlan(livePlan);
+      });
       const eventSnap = await getDoc(
         doc(db, "orgs", orgSlug, "events", eventSlug),
       );
@@ -409,18 +439,35 @@ export default function EventDashboardPage() {
   }, [combinedGuests, guestSearch]);
   const sheetColumnsForView = useMemo(() => {
     if (uploadedSheetColumns.length > 0) return uploadedSheetColumns;
-    const firstWithSheet = combinedGuests.find((guest) => guest.sheetColumns?.length);
-    if (firstWithSheet?.sheetColumns?.length) return firstWithSheet.sheetColumns;
+    const firstWithSheet = combinedGuests.find(
+      (guest) => guest.sheetColumns?.length,
+    );
+    if (firstWithSheet?.sheetColumns?.length)
+      return firstWithSheet.sheetColumns;
     return ["firstName", "lastName", "phone", "email"];
   }, [combinedGuests, uploadedSheetColumns]);
   const defaultCountryCallingCode = useMemo(() => {
     const loc = (eventData?.location ?? location ?? "").toLowerCase();
-    if (loc.includes("nigeria") || loc.includes("lagos") || loc.includes("abuja")) return "234";
+    if (
+      loc.includes("nigeria") ||
+      loc.includes("lagos") ||
+      loc.includes("abuja")
+    )
+      return "234";
     if (loc.includes("ghana") || loc.includes("accra")) return "233";
     if (loc.includes("kenya") || loc.includes("nairobi")) return "254";
-    if (loc.includes("south africa") || loc.includes("johannesburg") || loc.includes("cape town"))
+    if (
+      loc.includes("south africa") ||
+      loc.includes("johannesburg") ||
+      loc.includes("cape town")
+    )
       return "27";
-    if (loc.includes("united kingdom") || loc.includes("uk") || loc.includes("london")) return "44";
+    if (
+      loc.includes("united kingdom") ||
+      loc.includes("uk") ||
+      loc.includes("london")
+    )
+      return "44";
     if (loc.includes("united states") || loc.includes("usa")) return "1";
 
     try {
@@ -709,7 +756,7 @@ export default function EventDashboardPage() {
         const found = columns.find((column) =>
           candidates.some((candidate) => norm(column).includes(candidate)),
         );
-        return found ? rowMap[found] ?? "" : "";
+        return found ? (rowMap[found] ?? "") : "";
       };
       const firstName = findColumn(["firstname", "first", "givenname"]);
       const lastName = findColumn(["lastname", "last", "surname"]);
@@ -719,7 +766,10 @@ export default function EventDashboardPage() {
       const normalizedPhone = formatPhoneWithPlus(phone.trim(), {
         defaultCountryCallingCode,
       });
-      const fallbackName = Object.values(rowMap).find((value) => value)?.trim() ?? "";
+      const fallbackName =
+        Object.values(rowMap)
+          .find((value) => value)
+          ?.trim() ?? "";
       const name =
         explicitName.trim() ||
         `${firstName} ${lastName}`.trim() ||
@@ -768,9 +818,7 @@ export default function EventDashboardPage() {
         lowerName.endsWith(".xlsx") ||
         lowerName.endsWith(".xls");
       if (!isSupported) {
-        setGuestError(
-          "Upload CSV/TSV or Excel (.xlsx/.xls) file.",
-        );
+        setGuestError("Upload CSV/TSV or Excel (.xlsx/.xls) file.");
         return;
       }
       let columns: string[] = [];
@@ -787,7 +835,9 @@ export default function EventDashboardPage() {
           setGuestError("No sheet found in the uploaded Excel file.");
           return;
         }
-        const rawRows = xlsx.utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
+        const rawRows = xlsx.utils.sheet_to_json<
+          (string | number | boolean | null)[]
+        >(sheet, {
           header: 1,
           defval: "",
           raw: false,
@@ -1027,12 +1077,17 @@ export default function EventDashboardPage() {
       );
       if (!byEmail.empty) {
         const docSnap = byEmail.docs[0];
-        return { id: docSnap.id, ...(docSnap.data() as Omit<ExistingInvite, "id">) } as ExistingInvite;
+        return {
+          id: docSnap.id,
+          ...(docSnap.data() as Omit<ExistingInvite, "id">),
+        } as ExistingInvite;
       }
     }
     if (guestKey.startsWith("phone:")) {
       const phone = guestKey.slice("phone:".length);
-      const normalized = normalizePhoneDigits(phone, { defaultCountryCallingCode });
+      const normalized = normalizePhoneDigits(phone, {
+        defaultCountryCallingCode,
+      });
       const candidates = [phone, normalized].filter(Boolean);
       for (const candidate of candidates) {
         const byPhone = await getDocs(
@@ -1094,9 +1149,13 @@ export default function EventDashboardPage() {
       }),
     });
 
-    const json = (await res.json().catch(() => null)) as
-      | { ok?: boolean; provider?: string; mode?: string; error?: string; status?: number }
-      | null;
+    const json = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      provider?: string;
+      mode?: string;
+      error?: string;
+      status?: number;
+    } | null;
 
     if (!res.ok) {
       const pieces = [
@@ -1105,7 +1164,9 @@ export default function EventDashboardPage() {
       ].filter(Boolean);
 
       throw new Error(
-        pieces.length ? pieces.join(" | ") : `WhatsApp send failed (${res.status})`,
+        pieces.length
+          ? pieces.join(" | ")
+          : `WhatsApp send failed (${res.status})`,
       );
     }
 
@@ -1140,7 +1201,10 @@ export default function EventDashboardPage() {
           phone: inviteTarget.phone,
         });
 
-        const existing = await getExistingInviteByGuestKey(invitesRef, guestKey);
+        const existing = await getExistingInviteByGuestKey(
+          invitesRef,
+          guestKey,
+        );
         const existingToken =
           typeof existing?.token === "string" ? existing.token : "";
         const existingUsed =
@@ -1205,7 +1269,11 @@ export default function EventDashboardPage() {
           await batch.commit();
         }
 
-        const sendResult = await sendWhatsAppPlaceholder(inviteTarget.phone, inviteMessage, link);
+        const sendResult = await sendWhatsAppPlaceholder(
+          inviteTarget.phone,
+          inviteMessage,
+          link,
+        );
         setInviteLink(sendResult.fullLink);
         setInviteStatus(
           sendResult.mode === "session"
@@ -1228,7 +1296,13 @@ export default function EventDashboardPage() {
 
         const existingByKey = new Map<
           string,
-          { id: string; token: string; used?: boolean; guestPhone?: string; guestEmail?: string }
+          {
+            id: string;
+            token: string;
+            used?: boolean;
+            guestPhone?: string;
+            guestEmail?: string;
+          }
         >();
         const existingTokens = new Set<string>();
 
@@ -1253,8 +1327,14 @@ export default function EventDashboardPage() {
               id: docSnap.id,
               token,
               used: typeof data.used === "boolean" ? data.used : undefined,
-              guestPhone: typeof data.guestPhone === "string" ? data.guestPhone : undefined,
-              guestEmail: typeof data.guestEmail === "string" ? data.guestEmail : undefined,
+              guestPhone:
+                typeof data.guestPhone === "string"
+                  ? data.guestPhone
+                  : undefined,
+              guestEmail:
+                typeof data.guestEmail === "string"
+                  ? data.guestEmail
+                  : undefined,
             });
             existingTokens.add(token);
           });
@@ -1264,12 +1344,14 @@ export default function EventDashboardPage() {
         const inviteItems = guests.map((guest) => {
           const guestKey = normalizeGuestKey(guest);
           const existing = guestKey ? existingByKey.get(guestKey) : undefined;
-          const token = existing?.token || (() => {
-            let t = createInviteToken(6);
-            while (usedTokens.has(t)) t = createInviteToken(6);
-            usedTokens.add(t);
-            return t;
-          })();
+          const token =
+            existing?.token ||
+            (() => {
+              let t = createInviteToken(6);
+              while (usedTokens.has(t)) t = createInviteToken(6);
+              usedTokens.add(t);
+              return t;
+            })();
 
           const link = `/${orgSlug}/${eventSlug}/invite/${token}`;
           return {
@@ -1319,7 +1401,11 @@ export default function EventDashboardPage() {
               { merge: true },
             );
           } else {
-            batch.set(docRef, { ...baseData, used: false, createdAt: serverTimestamp() });
+            batch.set(docRef, {
+              ...baseData,
+              used: false,
+              createdAt: serverTimestamp(),
+            });
           }
         });
         await batch.commit();
@@ -1451,7 +1537,9 @@ export default function EventDashboardPage() {
       showCopyToast("Link copied successfully");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to copy guest invite link.";
+        err instanceof Error
+          ? err.message
+          : "Unable to copy guest invite link.";
       setGuestError(message);
     }
   };
@@ -1465,7 +1553,8 @@ export default function EventDashboardPage() {
       guest.lastName ?? fallbackName.split(" ").slice(1).join(" ") ?? "",
     );
     setEditPhone(
-      formatPhoneWithPlus(guest.phone, { defaultCountryCallingCode }) || guest.phone,
+      formatPhoneWithPlus(guest.phone, { defaultCountryCallingCode }) ||
+        guest.phone,
     );
     setEditEmail(guest.email);
   };
@@ -1698,7 +1787,9 @@ export default function EventDashboardPage() {
       anchor.click();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to download guest image card";
+        err instanceof Error
+          ? err.message
+          : "Unable to download guest image card";
       setGuestError(message);
     } finally {
       setDownloadingGuestCard(false);
@@ -1947,16 +2038,28 @@ export default function EventDashboardPage() {
             <h2 className="text-lg font-bold mb-4">Guest list</h2>
             <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-wider text-emerald-700">Checked-in</div>
-                <div className="mt-1 text-2xl font-black text-emerald-800">{checkedInCount}</div>
+                <div className="text-xs uppercase tracking-wider text-emerald-700">
+                  Checked-in
+                </div>
+                <div className="mt-1 text-2xl font-black text-emerald-800">
+                  {checkedInCount}
+                </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-wider text-slate-600">Saved guests</div>
-                <div className="mt-1 text-2xl font-black text-slate-900">{savedGuestCount}</div>
+                <div className="text-xs uppercase tracking-wider text-slate-600">
+                  Saved guests
+                </div>
+                <div className="mt-1 text-2xl font-black text-slate-900">
+                  {savedGuestCount}
+                </div>
               </div>
               <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-wider text-blue-700">Remaining</div>
-                <div className="mt-1 text-2xl font-black text-blue-800">{remainingToCheckIn}</div>
+                <div className="text-xs uppercase tracking-wider text-blue-700">
+                  Remaining
+                </div>
+                <div className="mt-1 text-2xl font-black text-blue-800">
+                  {remainingToCheckIn}
+                </div>
               </div>
             </div>
             <div className="mb-4">
@@ -1993,7 +2096,8 @@ export default function EventDashboardPage() {
                   const formatted = formatPhoneWithPlus(guestPhone, {
                     defaultCountryCallingCode,
                   });
-                  if (formatted && formatted !== guestPhone) setGuestPhone(formatted);
+                  if (formatted && formatted !== guestPhone)
+                    setGuestPhone(formatted);
                 }}
                 required
               />
@@ -2089,54 +2193,74 @@ export default function EventDashboardPage() {
                           const bucket = guestBucketsByName.get(key) ?? [];
                           if (bucket.length === 0) return null;
                           const used = usage.get(key) ?? 0;
-                          const picked = bucket[used] ?? bucket[bucket.length - 1];
+                          const picked =
+                            bucket[used] ?? bucket[bucket.length - 1];
                           usage.set(key, used + 1);
                           return picked;
                         };
                         return sheetBlocksForView.map((block, index) => {
-                          const palette = tableCardPalettes[index % tableCardPalettes.length];
+                          const palette =
+                            tableCardPalettes[index % tableCardPalettes.length];
                           return (
-                          <div key={`${block.title}-${index}`} className={`rounded-xl border overflow-hidden ${palette.border}`}>
-                            <div className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${palette.header}`}>
-                              {block.title}
-                            </div>
-                            <div className={`max-h-72 overflow-y-auto ${palette.body}`}>
-                              {block.rows.map((row) => {
-                                const fromPosition = guestByTablePosition.get(
-                                  `${row.tableColumnIndex}:${row.tableRowIndex}`,
-                                );
-                                const linkedGuest =
-                                  fromPosition ?? getLinkedGuest(row.guestName);
-                                return (
-                                  <div
-                                    key={row.key}
-                                    className="grid grid-cols-[1fr,auto] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm"
-                                  >
-                                    <div className="pr-2 break-words">{row.guestName}</div>
-                                    <button
-                                      type="button"
-                                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap ${
-                                        linkedGuest?.checkedIn
-                                          ? "bg-emerald-100 text-emerald-700"
-                                          : "bg-blue-600 text-white hover:bg-blue-500"
-                                      }`}
-                                      onClick={() => {
-                                        if (linkedGuest) handleCheckInGuest(linkedGuest);
-                                      }}
-                                      disabled={!linkedGuest || Boolean(linkedGuest.checkedIn)}
-                                      title={!linkedGuest ? "Save guests first to enable check-in" : ""}
+                            <div
+                              key={`${block.title}-${index}`}
+                              className={`rounded-xl border overflow-hidden ${palette.border}`}
+                            >
+                              <div
+                                className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${palette.header}`}
+                              >
+                                {block.title}
+                              </div>
+                              <div
+                                className={`max-h-72 overflow-y-auto ${palette.body}`}
+                              >
+                                {block.rows.map((row) => {
+                                  const fromPosition = guestByTablePosition.get(
+                                    `${row.tableColumnIndex}:${row.tableRowIndex}`,
+                                  );
+                                  const linkedGuest =
+                                    fromPosition ??
+                                    getLinkedGuest(row.guestName);
+                                  return (
+                                    <div
+                                      key={row.key}
+                                      className="grid grid-cols-[1fr,auto] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm"
                                     >
-                                      {linkedGuest?.checkedIn
-                                        ? "Checked"
-                                        : linkedGuest
-                                          ? "Check in"
-                                          : row.checkCell || "Pending"}
-                                    </button>
-                                  </div>
-                                );
-                              })}
+                                      <div className="pr-2 break-words">
+                                        {row.guestName}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap ${
+                                          linkedGuest?.checkedIn
+                                            ? "bg-emerald-100 text-emerald-700"
+                                            : "bg-blue-600 text-white hover:bg-blue-500"
+                                        }`}
+                                        onClick={() => {
+                                          if (linkedGuest)
+                                            handleCheckInGuest(linkedGuest);
+                                        }}
+                                        disabled={
+                                          !linkedGuest ||
+                                          Boolean(linkedGuest.checkedIn)
+                                        }
+                                        title={
+                                          !linkedGuest
+                                            ? "Save guests first to enable check-in"
+                                            : ""
+                                        }
+                                      >
+                                        {linkedGuest?.checkedIn
+                                          ? "Checked"
+                                          : linkedGuest
+                                            ? "Check in"
+                                            : row.checkCell || "Pending"}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
                           );
                         });
                       })()}
@@ -2161,24 +2285,32 @@ export default function EventDashboardPage() {
                         </thead>
                         <tbody>
                           {filteredGuests.map((guest, index) => (
-                            <tr key={`sheet-${guest.email || guest.phone || guest.name}-${index}`} className="border-b border-slate-200 last:border-b-0">
+                            <tr
+                              key={`sheet-${guest.email || guest.phone || guest.name}-${index}`}
+                              className="border-b border-slate-200 last:border-b-0"
+                            >
                               {sheetColumnsForView.map((column) => {
                                 const valueFromSheet = guest.sheetRow?.[column];
-                                const fallbackByName =
-                                  column.toLowerCase().includes("first")
-                                    ? guest.firstName
-                                    : column.toLowerCase().includes("last")
-                                      ? guest.lastName
-                                      : column.toLowerCase().includes("phone")
-                                        ? guest.phone
-                                        : column.toLowerCase().includes("mail")
-                                          ? guest.email
-                                          : column.toLowerCase().includes("name")
-                                            ? guest.name
-                                            : "";
-                                const cellValue = valueFromSheet ?? fallbackByName ?? "";
+                                const fallbackByName = column
+                                  .toLowerCase()
+                                  .includes("first")
+                                  ? guest.firstName
+                                  : column.toLowerCase().includes("last")
+                                    ? guest.lastName
+                                    : column.toLowerCase().includes("phone")
+                                      ? guest.phone
+                                      : column.toLowerCase().includes("mail")
+                                        ? guest.email
+                                        : column.toLowerCase().includes("name")
+                                          ? guest.name
+                                          : "";
+                                const cellValue =
+                                  valueFromSheet ?? fallbackByName ?? "";
                                 return (
-                                  <td key={`${column}-${index}`} className="px-3 py-2 break-words">
+                                  <td
+                                    key={`${column}-${index}`}
+                                    className="px-3 py-2 break-words"
+                                  >
                                     {cellValue || "-"}
                                   </td>
                                 );
@@ -2244,10 +2376,14 @@ export default function EventDashboardPage() {
                                   setEditPhone(event.target.value)
                                 }
                                 onBlur={() => {
-                                  const formatted = formatPhoneWithPlus(editPhone, {
-                                    defaultCountryCallingCode,
-                                  });
-                                  if (formatted && formatted !== editPhone) setEditPhone(formatted);
+                                  const formatted = formatPhoneWithPlus(
+                                    editPhone,
+                                    {
+                                      defaultCountryCallingCode,
+                                    },
+                                  );
+                                  if (formatted && formatted !== editPhone)
+                                    setEditPhone(formatted);
                                 }}
                               />
                               <input
@@ -2399,11 +2535,21 @@ export default function EventDashboardPage() {
             <h2 className="text-lg font-bold mb-4">Import tips</h2>
             <div className="space-y-3 text-sm text-slate-600">
               <div>
-                Upload CSV/TSV or Excel (.xlsx/.xls) to preserve your table column order.
+                Upload CSV/TSV or Excel (.xlsx/.xls) to preserve your table
+                column order.
               </div>
-              <div>Wide multi-table sheets are auto-arranged into responsive table cards.</div>
-              <div>Header row is optional; if present, column names are used in the guest table.</div>
-              <div>Use the search bar to find guest names quickly and check them in.</div>
+              <div>
+                Wide multi-table sheets are auto-arranged into responsive table
+                cards.
+              </div>
+              <div>
+                Header row is optional; if present, column names are used in the
+                guest table.
+              </div>
+              <div>
+                Use the search bar to find guest names quickly and check them
+                in.
+              </div>
             </div>
           </div>
         </section>
@@ -2430,23 +2576,36 @@ export default function EventDashboardPage() {
                   scale: 1,
                   transition: { duration: 0.28, ease: easeOut },
                 }}
-                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.18 } }}
+                exit={{
+                  opacity: 0,
+                  y: 10,
+                  scale: 0.98,
+                  transition: { duration: 0.18 },
+                }}
                 className="relative z-10 w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
               >
-                <h3 className="text-lg font-bold text-slate-900">Saving guest files</h3>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Saving guest files
+                </h3>
                 <p className="mt-2 text-sm text-slate-600">
                   Please wait while we save your guest list and table layout.
                 </p>
                 <div className="mt-4 flex items-center gap-3">
                   <div className="h-5 w-5 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin" />
-                  <div className="text-sm font-medium text-blue-700">Saving...</div>
+                  <div className="text-sm font-medium text-blue-700">
+                    Saving...
+                  </div>
                 </div>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                   <motion.div
                     className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400"
                     initial={{ x: "-100%" }}
                     animate={{ x: "100%" }}
-                    transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 1.1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                   />
                 </div>
               </motion.section>
@@ -2461,12 +2620,21 @@ export default function EventDashboardPage() {
               initial={{ opacity: 0, y: -16, scale: 0.92, filter: "blur(4px)" }}
               animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
               exit={{ opacity: 0, y: -12, scale: 0.96, filter: "blur(2px)" }}
-              transition={{ type: "spring", stiffness: 420, damping: 30, mass: 0.7 }}
+              transition={{
+                type: "spring",
+                stiffness: 420,
+                damping: 30,
+                mass: 0.7,
+              }}
             >
               <motion.span
                 className="h-2 w-2 rounded-full bg-white"
                 animate={{ scale: [1, 1.35, 1], opacity: [0.85, 1, 0.85] }}
-                transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: 0.9,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
               />
               <span>{copyToast}</span>
             </motion.div>
@@ -2503,20 +2671,29 @@ export default function EventDashboardPage() {
                 }}
                 className="relative z-10 w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
               >
-                <h3 className="text-lg font-bold text-slate-900">Processing guest spreadsheet</h3>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Processing guest spreadsheet
+                </h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Please wait while we arrange your table structure and prepare check-in search.
+                  Please wait while we arrange your table structure and prepare
+                  check-in search.
                 </p>
                 <div className="mt-5 flex items-center gap-3">
                   <div className="h-6 w-6 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin" />
-                  <div className="text-sm font-medium text-blue-700">Arranging guest tables...</div>
+                  <div className="text-sm font-medium text-blue-700">
+                    Arranging guest tables...
+                  </div>
                 </div>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                   <motion.div
                     className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400"
                     initial={{ x: "-100%" }}
                     animate={{ x: "100%" }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                   />
                 </div>
               </motion.section>
@@ -2544,8 +2721,12 @@ export default function EventDashboardPage() {
                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
                 className="relative z-10 w-full max-w-[460px] bg-white border border-amber-200 rounded-3xl p-6 shadow-2xl"
               >
-                <h3 className="text-lg font-bold text-amber-800 mb-2">Upload blocked in free mode</h3>
-                <p className="text-sm text-amber-700 mb-4">{guestLimitWarning}</p>
+                <h3 className="text-lg font-bold text-amber-800 mb-2">
+                  Upload blocked in free mode
+                </h3>
+                <p className="text-sm text-amber-700 mb-4">
+                  {guestLimitWarning}
+                </p>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -2562,7 +2743,9 @@ export default function EventDashboardPage() {
                     View pricing
                   </Link>
                 </div>
-                <p className="mt-3 text-xs text-slate-500">This message will close automatically in 10 seconds.</p>
+                <p className="mt-3 text-xs text-slate-500">
+                  This message will close automatically in 10 seconds.
+                </p>
               </motion.div>
             </motion.div>
           ) : null}

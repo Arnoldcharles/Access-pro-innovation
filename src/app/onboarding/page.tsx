@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
-import { onAuthStateChanged } from 'firebase/auth';
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, cubicBezier } from "framer-motion";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
@@ -18,70 +18,80 @@ import {
   setDoc,
   where,
   writeBatch,
-} from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 const slugify = (value: string) =>
   value
     .toLowerCase()
     .trim()
-    .replace(/['"]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [orgName, setOrgName] = useState('');
-  const [orgSize, setOrgSize] = useState('');
-  const [role, setRole] = useState('');
-  const [uid, setUid] = useState('');
-  const [email, setEmail] = useState('');
+  const [error, setError] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [orgName, setOrgName] = useState("");
+  const [orgSize, setOrgSize] = useState("");
+  const [role, setRole] = useState("");
+  const [uid, setUid] = useState("");
+  const [email, setEmail] = useState("");
   const [showOrgTaken, setShowOrgTaken] = useState(false);
   const [orgCount, setOrgCount] = useState(0);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
-  const siteOwnerUid = 'krpJL2xq7Rf1NUumK3G6nzpZWsM2';
+  const siteOwnerUid = "krpJL2xq7Rf1NUumK3G6nzpZWsM2";
   const isFree = uid !== siteOwnerUid;
   const maxOrgs = 2;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace('/sign-in');
+        router.replace("/sign-in");
         return;
       }
 
       setUid(user.uid);
-      setEmail(user.email ?? '');
-      setName(user.displayName ?? '');
-      setPhone(user.phoneNumber ?? '');
+      setEmail(user.email ?? "");
+      setName(user.displayName ?? "");
+      setPhone(user.phoneNumber ?? "");
 
-      const allowNewOrg = typeof window !== 'undefined' && window.location.search.includes('newOrg=1');
-      const snap = await getDoc(doc(db, 'users', user.uid));
+      const allowNewOrg =
+        typeof window !== "undefined" &&
+        window.location.search.includes("newOrg=1");
+      const snap = await getDoc(doc(db, "users", user.uid));
       if (snap.exists()) {
         const data = snap.data();
-        setName((data.name as string) ?? user.displayName ?? '');
-        setPhone((data.phone as string) ?? user.phoneNumber ?? '');
-        setOrgName((data.orgName as string) ?? '');
-        setOrgSize((data.orgSize as string) ?? '');
-        setRole((data.role as string) ?? '');
+        setName((data.name as string) ?? user.displayName ?? "");
+        setPhone((data.phone as string) ?? user.phoneNumber ?? "");
+        setOrgName((data.orgName as string) ?? "");
+        setOrgSize((data.orgSize as string) ?? "");
+        setRole((data.role as string) ?? "");
         if (data.orgSlug && !allowNewOrg) {
-          const orgSnap = await getDoc(doc(db, 'orgs', data.orgSlug as string));
+          const orgSnap = await getDoc(doc(db, "orgs", data.orgSlug as string));
           const orgData = orgSnap.exists() ? orgSnap.data() : null;
-          if (orgSnap.exists() && !(orgData as { deletedAt?: unknown })?.deletedAt) {
+          if (
+            orgSnap.exists() &&
+            !(orgData as { deletedAt?: unknown })?.deletedAt
+          ) {
             router.replace(`/${data.orgSlug}`);
             return;
           }
         }
       }
-      const orgsQuery = query(collection(db, 'orgs'), where('ownerId', '==', user.uid));
+      const orgsQuery = query(
+        collection(db, "orgs"),
+        where("ownerId", "==", user.uid),
+      );
       const orgsSnap = await getDocs(orgsQuery);
-      const activeCount = orgsSnap.docs.filter((docSnap) => !(docSnap.data() as { deletedAt?: unknown }).deletedAt).length;
+      const activeCount = orgsSnap.docs.filter(
+        (docSnap) => !(docSnap.data() as { deletedAt?: unknown }).deletedAt,
+      ).length;
       setOrgCount(activeCount);
 
       setLoading(false);
@@ -89,16 +99,19 @@ export default function OnboardingPage() {
     return () => unsub();
   }, [router]);
 
-  const orgSlugPreview = useMemo(() => slugify(orgName || 'your-organization'), [orgName]);
+  const orgSlugPreview = useMemo(
+    () => slugify(orgName || "your-organization"),
+    [orgName],
+  );
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError('');
+    setError("");
 
     if (!uid) return;
     const baseSlug = slugify(orgName);
     if (!baseSlug) {
-      setError('Please enter your organization name.');
+      setError("Please enter your organization name.");
       return;
     }
 
@@ -110,7 +123,7 @@ export default function OnboardingPage() {
         return;
       }
       let slug = baseSlug;
-      const orgSnap = await getDoc(doc(db, 'orgs', slug));
+      const orgSnap = await getDoc(doc(db, "orgs", slug));
       if (orgSnap.exists()) {
         setShowOrgTaken(true);
         setSaving(false);
@@ -119,24 +132,24 @@ export default function OnboardingPage() {
 
       const now = serverTimestamp();
       const batch = writeBatch(db);
-      batch.set(doc(db, 'orgs', slug), {
+      batch.set(doc(db, "orgs", slug), {
         name: orgName,
         slug,
         ownerId: uid,
         createdAt: now,
         updatedAt: now,
         eventCount: 0,
-        plan: 'free',
+        plan: "free",
       });
-      batch.set(doc(db, 'orgs', slug, 'members', uid), {
-        role: 'owner',
+      batch.set(doc(db, "orgs", slug, "members", uid), {
+        role: "owner",
         email,
         name,
         createdAt: now,
         updatedAt: now,
       });
       batch.set(
-        doc(db, 'users', uid),
+        doc(db, "users", uid),
         {
           uid,
           email,
@@ -150,13 +163,14 @@ export default function OnboardingPage() {
           createdAt: now,
           orgCount: increment(1),
         },
-        { merge: true }
+        { merge: true },
       );
       await batch.commit();
 
       router.replace(`/${slug}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to complete onboarding';
+      const message =
+        err instanceof Error ? err.message : "Unable to complete onboarding";
       setError(message);
     } finally {
       setSaving(false);
@@ -185,14 +199,24 @@ export default function OnboardingPage() {
       <div className="max-w-[640px] mx-auto px-6 sm:px-10 py-16">
         <motion.div initial="hidden" animate="show" variants={fadeUp}>
           <Link className="flex items-center gap-3 mb-10" href="/">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">A</div>
-            <span className="font-bold text-xl tracking-tight">AccessPro Innovation</span>
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
+              A
+            </div>
+            <span className="font-bold text-xl tracking-tight">
+              AccessPro Innovation
+            </span>
           </Link>
 
-          <h1 className="text-3xl md:text-4xl font-black mb-3">Set up your organization</h1>
+          <h1 className="text-3xl md:text-4xl font-black mb-3">
+            Set up your organization
+          </h1>
           <p className="text-slate-600 mb-8">
-            Confirm your details and create your organization workspace. Your dashboard URL will be:
-            <span className="text-blue-400 font-semibold"> /{orgSlugPreview}</span>
+            Confirm your details and create your organization workspace. Your
+            dashboard URL will be:
+            <span className="text-blue-400 font-semibold">
+              {" "}
+              /{orgSlugPreview}
+            </span>
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -243,12 +267,14 @@ export default function OnboardingPage() {
                   Saving...
                 </>
               ) : (
-                'Save and continue'
+                "Save and continue"
               )}
             </button>
           </form>
 
-          {error ? <div className="mt-4 text-sm text-red-400">{error}</div> : null}
+          {error ? (
+            <div className="mt-4 text-sm text-red-400">{error}</div>
+          ) : null}
         </motion.div>
       </div>
       <AnimatePresence>
@@ -271,7 +297,9 @@ export default function OnboardingPage() {
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
               className="relative z-10 w-full max-w-[420px] bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl"
             >
-              <h3 className="text-lg font-bold mb-2">Organization name taken</h3>
+              <h3 className="text-lg font-bold mb-2">
+                Organization name taken
+              </h3>
               <p className="text-sm text-slate-600 mb-4">
                 That organization name is already in use. Please choose another.
               </p>
@@ -308,7 +336,8 @@ export default function OnboardingPage() {
             >
               <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
               <p className="text-sm text-slate-600 mb-4">
-                Free mode allows up to {maxOrgs} organizations. Upgrade to create more.
+                Free mode allows up to {maxOrgs} organizations. Upgrade to
+                create more.
               </p>
               <div className="flex items-center gap-3">
                 <button
@@ -318,7 +347,10 @@ export default function OnboardingPage() {
                 >
                   Not now
                 </button>
-                <Link className="px-4 py-2 rounded-2xl bg-blue-600 text-white" href="/pricing">
+                <Link
+                  className="px-4 py-2 rounded-2xl bg-blue-600 text-white"
+                  href="/pricing"
+                >
                   View pricing
                 </Link>
               </div>

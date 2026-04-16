@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { AnimatePresence, motion, cubicBezier } from 'framer-motion';
-import { onAuthStateChanged } from 'firebase/auth';
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion, cubicBezier } from "framer-motion";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
@@ -16,24 +16,28 @@ import {
   serverTimestamp,
   updateDoc,
   writeBatch,
-} from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 const slugify = (value: string) =>
   value
     .toLowerCase()
     .trim()
-    .replace(/['"]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
 
 const toMillis = (
-  value?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null,
+  value?: {
+    toDate?: () => Date;
+    toMillis?: () => number;
+    seconds?: number;
+  } | null,
 ) => {
   if (!value) return null;
-  if (typeof value.toMillis === 'function') return value.toMillis();
-  if (typeof value.toDate === 'function') return value.toDate().getTime();
-  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
   return null;
 };
 
@@ -43,79 +47,101 @@ export default function CreateEventPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
-  const [error, setError] = useState('');
-  const [eventName, setEventName] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [eventTime, setEventTime] = useState('');
-  const [location, setLocation] = useState('');
-  const [orgName, setOrgName] = useState('');
-  const [uid, setUid] = useState('');
-  const [orgPlan, setOrgPlan] = useState<'free' | 'pro'>('free');
+  const [error, setError] = useState("");
+  const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const [location, setLocation] = useState("");
+  const [orgName, setOrgName] = useState("");
+  const [uid, setUid] = useState("");
+  const [orgPlan, setOrgPlan] = useState<"free" | "pro">("free");
   const [eventCount, setEventCount] = useState(0);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
-  const isFree = orgPlan !== 'pro';
+  const isFree = orgPlan !== "pro";
   const maxEvents = 5;
 
   useEffect(() => {
     let liveOrgUnsub: null | (() => void) = null;
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace('/sign-in');
+        router.replace("/sign-in");
         return;
       }
       setUid(user.uid);
       const orgSlug = params?.org;
       if (!orgSlug) return;
-      const orgSnap = await getDoc(doc(db, 'orgs', orgSlug));
+      const orgSnap = await getDoc(doc(db, "orgs", orgSlug));
       if (!orgSnap.exists()) {
-        router.replace('/onboarding');
+        router.replace("/onboarding");
         return;
       }
       const orgData = orgSnap.data() as {
         name?: string;
-        plan?: 'free' | 'pro';
-        proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
+        plan?: "free" | "pro";
+        proExpiresAt?: {
+          toDate?: () => Date;
+          toMillis?: () => number;
+          seconds?: number;
+        } | null;
       };
-      setOrgName(orgData.name ?? '');
-      let effectivePlan: 'free' | 'pro' = orgData.plan === 'pro' ? 'pro' : 'free';
+      setOrgName(orgData.name ?? "");
+      let effectivePlan: "free" | "pro" =
+        orgData.plan === "pro" ? "pro" : "free";
       const expiryMs = toMillis(orgData.proExpiresAt);
-      if (effectivePlan === 'pro' && typeof expiryMs === 'number' && expiryMs <= Date.now()) {
+      if (
+        effectivePlan === "pro" &&
+        typeof expiryMs === "number" &&
+        expiryMs <= Date.now()
+      ) {
         try {
-          await updateDoc(doc(db, 'orgs', orgSlug), { plan: 'free', proExpiresAt: null });
-          effectivePlan = 'free';
+          await updateDoc(doc(db, "orgs", orgSlug), {
+            plan: "free",
+            proExpiresAt: null,
+          });
+          effectivePlan = "free";
         } catch (err) {
           console.error(err);
         }
       }
       setOrgPlan(effectivePlan);
-      liveOrgUnsub = onSnapshot(
-        doc(db, 'orgs', orgSlug),
-        async (liveSnap) => {
-          if (!liveSnap.exists()) {
-            router.replace('/onboarding');
-            return;
+      liveOrgUnsub = onSnapshot(doc(db, "orgs", orgSlug), async (liveSnap) => {
+        if (!liveSnap.exists()) {
+          router.replace("/onboarding");
+          return;
+        }
+        const liveData = liveSnap.data() as {
+          name?: string;
+          plan?: "free" | "pro";
+          proExpiresAt?: {
+            toDate?: () => Date;
+            toMillis?: () => number;
+            seconds?: number;
+          } | null;
+        };
+        let livePlan: "free" | "pro" = liveData.plan === "pro" ? "pro" : "free";
+        const liveExpiryMs = toMillis(liveData.proExpiresAt);
+        if (
+          livePlan === "pro" &&
+          typeof liveExpiryMs === "number" &&
+          liveExpiryMs <= Date.now()
+        ) {
+          try {
+            await updateDoc(doc(db, "orgs", orgSlug), {
+              plan: "free",
+              proExpiresAt: null,
+            });
+            livePlan = "free";
+          } catch (err) {
+            console.error(err);
           }
-          const liveData = liveSnap.data() as {
-            name?: string;
-            plan?: 'free' | 'pro';
-            proExpiresAt?: { toDate?: () => Date; toMillis?: () => number; seconds?: number } | null;
-          };
-          let livePlan: 'free' | 'pro' = liveData.plan === 'pro' ? 'pro' : 'free';
-          const liveExpiryMs = toMillis(liveData.proExpiresAt);
-          if (livePlan === 'pro' && typeof liveExpiryMs === 'number' && liveExpiryMs <= Date.now()) {
-            try {
-              await updateDoc(doc(db, 'orgs', orgSlug), { plan: 'free', proExpiresAt: null });
-              livePlan = 'free';
-            } catch (err) {
-              console.error(err);
-            }
-          }
-          setOrgName(liveData.name ?? '');
-          setOrgPlan(livePlan);
-        },
+        }
+        setOrgName(liveData.name ?? "");
+        setOrgPlan(livePlan);
+      });
+      const eventsSnap = await getDocs(
+        query(collection(db, "orgs", orgSlug, "events")),
       );
-      const eventsSnap = await getDocs(query(collection(db, 'orgs', orgSlug, 'events')));
       setEventCount(eventsSnap.docs.length);
       setLoading(false);
     });
@@ -125,17 +151,20 @@ export default function CreateEventPage() {
     };
   }, [params, router]);
 
-  const eventSlugPreview = useMemo(() => slugify(eventName || 'new-event'), [eventName]);
+  const eventSlugPreview = useMemo(
+    () => slugify(eventName || "new-event"),
+    [eventName],
+  );
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError('');
+    setError("");
     const orgSlug = params?.org;
     if (!orgSlug) return;
 
     const baseSlug = slugify(eventName);
     if (!baseSlug) {
-      setError('Please enter an event name.');
+      setError("Please enter an event name.");
       return;
     }
 
@@ -148,14 +177,16 @@ export default function CreateEventPage() {
       }
       let slug = baseSlug;
       for (let i = 2; i < 50; i += 1) {
-        const eventSnap = await getDoc(doc(db, 'orgs', orgSlug, 'events', slug));
+        const eventSnap = await getDoc(
+          doc(db, "orgs", orgSlug, "events", slug),
+        );
         if (!eventSnap.exists()) break;
         slug = `${baseSlug}-${i}`;
       }
 
       const now = serverTimestamp();
       const batch = writeBatch(db);
-      batch.set(doc(db, 'orgs', orgSlug, 'events', slug), {
+      batch.set(doc(db, "orgs", orgSlug, "events", slug), {
         name: eventName,
         slug,
         date: eventDate,
@@ -163,17 +194,22 @@ export default function CreateEventPage() {
         location,
         createdAt: now,
         updatedAt: now,
-        status: 'draft',
+        status: "draft",
         guestCount: 0,
       });
-      batch.set(doc(db, 'orgs', orgSlug), { eventCount: increment(1) }, { merge: true });
+      batch.set(
+        doc(db, "orgs", orgSlug),
+        { eventCount: increment(1) },
+        { merge: true },
+      );
       await batch.commit();
       setTransitioning(true);
       setTimeout(() => {
         router.replace(`/${orgSlug}/${slug}/design`);
       }, 500);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to create event';
+      const message =
+        err instanceof Error ? err.message : "Unable to create event";
       setError(message);
     } finally {
       setSaving(false);
@@ -201,13 +237,21 @@ export default function CreateEventPage() {
     <div className="min-h-screen bg-[color:var(--surface-2)] text-[color:var(--foreground)] font-sans antialiased">
       <div className="max-w-[720px] mx-auto px-6 sm:px-10 py-16">
         <motion.div initial="hidden" animate="show" variants={fadeUp}>
-          <Link className="text-sm text-slate-600 hover:text-slate-900" href={`/${params.org}`}>
-            Back to {orgName || 'dashboard'}
+          <Link
+            className="text-sm text-slate-600 hover:text-slate-900"
+            href={`/${params.org}`}
+          >
+            Back to {orgName || "dashboard"}
           </Link>
 
-          <h1 className="text-3xl md:text-4xl font-black mt-6 mb-3">Create a new event</h1>
+          <h1 className="text-3xl md:text-4xl font-black mt-6 mb-3">
+            Create a new event
+          </h1>
           <p className="text-slate-600 mb-8">
-            This event will live at: <span className="text-blue-400 font-semibold">/{params.org}/{eventSlugPreview}</span>
+            This event will live at:{" "}
+            <span className="text-blue-400 font-semibold">
+              /{params.org}/{eventSlugPreview}
+            </span>
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -251,7 +295,9 @@ export default function CreateEventPage() {
             </button>
           </form>
 
-          {error ? <div className="mt-4 text-sm text-red-400">{error}</div> : null}
+          {error ? (
+            <div className="mt-4 text-sm text-red-400">{error}</div>
+          ) : null}
         </motion.div>
       </div>
       <AnimatePresence>
@@ -294,7 +340,8 @@ export default function CreateEventPage() {
             >
               <h3 className="text-lg font-bold mb-2">Upgrade required</h3>
               <p className="text-sm text-slate-600 mb-4">
-                Free mode allows up to {maxEvents} events per organization. Upgrade to create more.
+                Free mode allows up to {maxEvents} events per organization.
+                Upgrade to create more.
               </p>
               <div className="flex items-center gap-3">
                 <button
@@ -304,7 +351,10 @@ export default function CreateEventPage() {
                 >
                   Not now
                 </button>
-                <Link className="px-4 py-2 rounded-2xl bg-blue-600 text-white" href={`/${params.org}/pricing`}>
+                <Link
+                  className="px-4 py-2 rounded-2xl bg-blue-600 text-white"
+                  href={`/${params.org}/pricing`}
+                >
                   View pricing
                 </Link>
               </div>
