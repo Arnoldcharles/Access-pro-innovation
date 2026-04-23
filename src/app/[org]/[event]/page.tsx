@@ -234,6 +234,7 @@ export default function EventDashboardPage() {
   const [rsvpOpen, setRsvpOpen] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState("");
+  const [rsvpSelectedGuests, setRsvpSelectedGuests] = useState<Set<string>>(new Set());
   const isFree = orgPlan !== "pro";
   const maxGuests = 500;
   const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
@@ -2157,7 +2158,11 @@ export default function EventDashboardPage() {
                 <button
                   type="button"
                   className="px-4 py-2 rounded-2xl bg-purple-600 text-white text-sm"
-                  onClick={() => setRsvpOpen(true)}
+                  onClick={() => {
+                    setRsvpOpen(true);
+                    setRsvpSelectedGuests(new Set());
+                    setRsvpStatus("");
+                  }}
                 >
                   Send RSVP
                 </button>
@@ -3136,34 +3141,28 @@ export default function EventDashboardPage() {
                   scale: 0.98,
                   transition: { duration: 0.2 },
                 }}
-                className="relative z-10 w-full max-w-[520px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl"
+                className="relative z-10 w-full max-w-[520px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl max-h-[85vh] overflow-y-auto"
               >
                 <div className="flex items-start justify-between gap-4 mb-6">
                   <div>
                     <h2 className="text-lg font-bold mb-1">Send RSVP Request</h2>
                     <p className="text-sm text-slate-600">
-                      Request RSVPs from all guests
+                      Select guests to send RSVP requests
                     </p>
                   </div>
                   <button
                     type="button"
                     className="text-sm text-slate-500 hover:text-slate-900"
-                    onClick={() => setRsvpOpen(false)}
+                    onClick={() => {
+                      setRsvpOpen(false);
+                      setRsvpSelectedGuests(new Set());
+                    }}
                   >
                     Close
                   </button>
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                    <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">
-                      Recipients
-                    </div>
-                    <div className="text-sm text-slate-700">
-                      {guests.length} saved guests will receive RSVP requests.
-                    </div>
-                  </div>
-
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
                     <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">
                       Event Details
@@ -3180,6 +3179,71 @@ export default function EventDashboardPage() {
                       </div>
                     </div>
                   </div>
+
+                  <div className="text-sm text-slate-600">
+                    <strong>{rsvpSelectedGuests.size}</strong> of {guests.length} guests selected
+                  </div>
+
+                  <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <input
+                      type="checkbox"
+                      id="select-all-rsvp"
+                      checked={rsvpSelectedGuests.size === guests.length && guests.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setRsvpSelectedGuests(new Set(guests.map((g) => g.id ?? "")));
+                        } else {
+                          setRsvpSelectedGuests(new Set());
+                        }
+                      }}
+                    />
+                    <label htmlFor="select-all-rsvp" className="text-sm font-semibold cursor-pointer">
+                      Select all guests
+                    </label>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-xl bg-white max-h-[300px] overflow-y-auto">
+                    {guests.length === 0 ? (
+                      <div className="p-4 text-sm text-slate-500 text-center">
+                        No saved guests yet
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-200">
+                        {guests.map((guest) => (
+                          <div
+                            key={guest.id}
+                            className="flex items-center gap-3 p-3 hover:bg-slate-50"
+                          >
+                            <input
+                              type="checkbox"
+                              id={`guest-${guest.id}`}
+                              checked={rsvpSelectedGuests.has(guest.id ?? "")}
+                              onChange={(e) => {
+                                const newSelected = new Set(rsvpSelectedGuests);
+                                if (e.target.checked) {
+                                  newSelected.add(guest.id ?? "");
+                                } else {
+                                  newSelected.delete(guest.id ?? "");
+                                }
+                                setRsvpSelectedGuests(newSelected);
+                              }}
+                            />
+                            <label
+                              htmlFor={`guest-${guest.id}`}
+                              className="flex-1 cursor-pointer"
+                            >
+                              <div className="text-sm font-medium text-slate-900">
+                                {guest.name}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {guest.phone}
+                              </div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {rsvpStatus ? (
@@ -3192,7 +3256,10 @@ export default function EventDashboardPage() {
                   <button
                     type="button"
                     className="px-5 py-3 rounded-2xl bg-slate-100 text-slate-700 font-semibold"
-                    onClick={() => setRsvpOpen(false)}
+                    onClick={() => {
+                      setRsvpOpen(false);
+                      setRsvpSelectedGuests(new Set());
+                    }}
                     disabled={rsvpLoading}
                   >
                     Cancel
@@ -3208,11 +3275,13 @@ export default function EventDashboardPage() {
                       setRsvpLoading(true);
                       setRsvpStatus("Sending RSVP requests...");
                       try {
-                        setRsvpStatus(`RSVP requests sent to ${guests.length} guests!`);
+                        const selectedCount = rsvpSelectedGuests.size;
+                        setRsvpStatus(`RSVP requests sent to ${selectedCount} guest${selectedCount === 1 ? "" : "s"}!`);
                         setTimeout(() => {
                           setRsvpOpen(false);
                           setRsvpStatus("");
                           setRsvpLoading(false);
+                          setRsvpSelectedGuests(new Set());
                         }, 2000);
                       } catch (err) {
                         const message =
@@ -3223,9 +3292,9 @@ export default function EventDashboardPage() {
                         setRsvpLoading(false);
                       }
                     }}
-                    disabled={rsvpLoading || guests.length === 0}
+                    disabled={rsvpLoading || rsvpSelectedGuests.size === 0}
                   >
-                    {rsvpLoading ? "Sending..." : "Send RSVP Requests"}
+                    {rsvpLoading ? "Sending..." : `Send to ${rsvpSelectedGuests.size} guest${rsvpSelectedGuests.size === 1 ? "" : "s"}`}
                   </button>
                 </div>
               </motion.section>
