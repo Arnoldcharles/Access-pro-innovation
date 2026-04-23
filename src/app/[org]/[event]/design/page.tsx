@@ -17,7 +17,18 @@ type DesignData = {
   nameColor?: string;
   nameSize?: number;
   nameFont?: string;
+  nameBg?: boolean;
   rsvpEnabled?: boolean;
+  rsvpImageDataUrl?: string;
+  rsvpQrX?: number;
+  rsvpQrY?: number;
+  rsvpQrSize?: number;
+  rsvpNameX?: number;
+  rsvpNameY?: number;
+  rsvpNameColor?: string;
+  rsvpNameSize?: number;
+  rsvpNameFont?: string;
+  rsvpNameBg?: boolean;
 };
 
 export default function EventDesignPage() {
@@ -38,10 +49,20 @@ export default function EventDesignPage() {
   const [nameFont, setNameFont] = useState("Arial, sans-serif");
   const [nameBg, setNameBg] = useState(true);
   const [rsvpEnabled, setRsvpEnabled] = useState(false);
-  const [dragging, setDragging] = useState<"qr" | "name" | null>(null);
+  const [rsvpImageDataUrl, setRsvpImageDataUrl] = useState<string>("");
+  const [rsvpQrPos, setRsvpQrPos] = useState({ x: 0.1, y: 0.1 });
+  const [rsvpQrSize, setRsvpQrSize] = useState(96);
+  const [rsvpNamePos, setRsvpNamePos] = useState({ x: 0.1, y: 0.3 });
+  const [rsvpNameColor, setRsvpNameColor] = useState("#111827");
+  const [rsvpNameSize, setRsvpNameSize] = useState(16);
+  const [rsvpNameFont, setRsvpNameFont] = useState("Arial, sans-serif");
+  const [rsvpNameBg, setRsvpNameBg] = useState(true);
+  const [dragging, setDragging] = useState<"invite-qr" | "invite-name" | "rsvp-qr" | "rsvp-name" | null>(null);
   const [transitioning, setTransitioning] = useState(false);
   const [imageAspect, setImageAspect] = useState(3 / 2);
+  const [rsvpImageAspect, setRsvpImageAspect] = useState(3 / 2);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const rsvpContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -78,6 +99,16 @@ export default function EventDesignPage() {
         if (typeof data.rsvpEnabled === "boolean") {
           setRsvpEnabled(data.rsvpEnabled);
         }
+        if (data.rsvpImageDataUrl) setRsvpImageDataUrl(data.rsvpImageDataUrl);
+        if (typeof data.rsvpQrX === "number" && typeof data.rsvpQrY === "number")
+          setRsvpQrPos({ x: data.rsvpQrX, y: data.rsvpQrY });
+        if (typeof data.rsvpQrSize === "number") setRsvpQrSize(data.rsvpQrSize);
+        if (typeof data.rsvpNameX === "number" && typeof data.rsvpNameY === "number")
+          setRsvpNamePos({ x: data.rsvpNameX, y: data.rsvpNameY });
+        if (data.rsvpNameColor) setRsvpNameColor(data.rsvpNameColor);
+        if (typeof data.rsvpNameSize === "number") setRsvpNameSize(data.rsvpNameSize);
+        if (data.rsvpNameFont) setRsvpNameFont(data.rsvpNameFont);
+        if (typeof data.rsvpNameBg === "boolean") setRsvpNameBg(data.rsvpNameBg);
       }
       setLoading(false);
     };
@@ -88,11 +119,18 @@ export default function EventDesignPage() {
     Math.min(0.95, Math.max(0.02, value / max));
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragging || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    if (dragging === "qr") {
-      const halfQrX = Math.min(0.48, qrSize / (2 * rect.width));
-      const halfQrY = Math.min(0.48, qrSize / (2 * rect.height));
+    if (!dragging) return;
+    const isInvite = dragging.startsWith("invite");
+    const panelRef = isInvite ? containerRef.current : rsvpContainerRef.current;
+    if (!panelRef) return;
+
+    const rect = panelRef.getBoundingClientRect();
+    const isQr = dragging.endsWith("qr");
+    const qrSizeValue = isInvite ? qrSize : rsvpQrSize;
+
+    if (isQr) {
+      const halfQrX = Math.min(0.48, qrSizeValue / (2 * rect.width));
+      const halfQrY = Math.min(0.48, qrSizeValue / (2 * rect.height));
       const x = Math.min(
         1 - halfQrX,
         Math.max(halfQrX, (event.clientX - rect.left) / rect.width),
@@ -101,12 +139,21 @@ export default function EventDesignPage() {
         1 - halfQrY,
         Math.max(halfQrY, (event.clientY - rect.top) / rect.height),
       );
-      setQrPos({ x, y });
+      if (isInvite) {
+        setQrPos({ x, y });
+      } else {
+        setRsvpQrPos({ x, y });
+      }
       return;
     }
+
     const x = toPercent(event.clientX - rect.left, rect.width);
     const y = toPercent(event.clientY - rect.top, rect.height);
-    if (dragging === "name") setNamePos({ x, y });
+    if (isInvite) {
+      setNamePos({ x, y });
+    } else {
+      setRsvpNamePos({ x, y });
+    }
   };
 
   const handleSave = async () => {
@@ -128,6 +175,16 @@ export default function EventDesignPage() {
         nameFont,
         nameBg,
         rsvpEnabled,
+        rsvpImageDataUrl,
+        rsvpQrX: rsvpQrPos.x,
+        rsvpQrY: rsvpQrPos.y,
+        rsvpQrSize,
+        rsvpNameX: rsvpNamePos.x,
+        rsvpNameY: rsvpNamePos.y,
+        rsvpNameColor,
+        rsvpNameSize,
+        rsvpNameFont,
+        rsvpNameBg,
       });
       setTransitioning(true);
       setTimeout(() => {
@@ -204,7 +261,7 @@ export default function EventDesignPage() {
                   top: `${qrPos.y * 100}%`,
                   transform: "translate(-50%, -50%)",
                 }}
-                onPointerDown={() => setDragging("qr")}
+                onPointerDown={() => setDragging("invite-qr")}
               >
                 <img
                   alt="QR code"
@@ -229,7 +286,7 @@ export default function EventDesignPage() {
                   fontSize: `${nameSize}px`,
                   fontFamily: nameFont,
                 }}
-                onPointerDown={() => setDragging("name")}
+                onPointerDown={() => setDragging("invite-name")}
               >
                 Guest Name
               </div>
@@ -330,14 +387,37 @@ export default function EventDesignPage() {
               />
               <label htmlFor="name-bg">Show background behind name</label>
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                id="rsvp-enabled"
-                type="checkbox"
-                checked={rsvpEnabled}
-                onChange={(event) => setRsvpEnabled(event.target.checked)}
-              />
-              <label htmlFor="rsvp-enabled">Enable RSVP tracking</label>
+            <div className="space-y-3 text-sm text-slate-600">
+              <div>Add an RSVP design section?</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`px-4 py-2 rounded-2xl border text-sm font-semibold transition ${
+                    rsvpEnabled
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-200"
+                  }`}
+                  onClick={() => setRsvpEnabled(true)}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-2 rounded-2xl border text-sm font-semibold transition ${
+                    !rsvpEnabled
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-200"
+                  }`}
+                  onClick={() => setRsvpEnabled(false)}
+                >
+                  No
+                </button>
+              </div>
+              <div className="text-slate-500">
+                {rsvpEnabled
+                  ? "RSVP design controls are visible below."
+                  : "Choose yes to add RSVP styling and layout options."}
+              </div>
             </div>
             <div className="text-sm text-slate-600">
               Event: {eventName} - {eventDate} - {eventLocation}
@@ -355,6 +435,181 @@ export default function EventDesignPage() {
             ) : null}
           </div>
         </div>
+        <AnimatePresence>
+          {rsvpEnabled ? (
+            <motion.div
+              className="mt-8 border border-slate-200 rounded-3xl p-4 bg-white shadow-sm"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0, transition: { ease: easeOut } }}
+              exit={{ opacity: 0, y: 12 }}
+            >
+              <div className="flex items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-black">RSVP design</h2>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Use the RSVP section below to position the RSVP QR and text.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col lg:flex-row gap-8 items-start">
+                <div
+                  className="border border-slate-200 rounded-3xl p-4 bg-slate-50 w-full lg:flex-1"
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={() => setDragging(null)}
+                  onPointerLeave={() => setDragging(null)}
+                >
+                  <div
+                    ref={rsvpContainerRef}
+                    className="relative w-full bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden"
+                    style={{ aspectRatio: rsvpImageAspect }}
+                  >
+                    {rsvpImageDataUrl ? (
+                      <img
+                        src={rsvpImageDataUrl}
+                        alt="RSVP design"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+                        Upload an RSVP image to start
+                      </div>
+                    )}
+                    <div
+                      className="absolute bg-white border border-slate-200 rounded-xl shadow-md flex items-center justify-center cursor-grab"
+                      style={{
+                        left: `${rsvpQrPos.x * 100}%`,
+                        top: `${rsvpQrPos.y * 100}%`,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                      onPointerDown={() => setDragging("rsvp-qr")}
+                    >
+                      <img
+                        alt="RSVP QR code"
+                        className="object-cover rounded-xl"
+                        style={{ width: rsvpQrSize, height: rsvpQrSize }}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                          `RSVP|${params.org}/${params.event}`,
+                        )}`}
+                      />
+                    </div>
+                    <div
+                      className={`absolute px-3 py-2 rounded-xl border border-slate-200 shadow cursor-grab text-sm font-semibold ${
+                        rsvpNameBg
+                          ? "bg-white/90"
+                          : "bg-transparent border-transparent shadow-none"
+                      }`}
+                      style={{
+                        left: `${rsvpNamePos.x * 100}%`,
+                        top: `${rsvpNamePos.y * 100}%`,
+                        transform: "translate(-50%, -50%)",
+                        color: rsvpNameColor,
+                        fontSize: `${rsvpNameSize}px`,
+                        fontFamily: rsvpNameFont,
+                      }}
+                      onPointerDown={() => setDragging("rsvp-name")}
+                    >
+                      RSVP Name
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-slate-200 rounded-3xl p-6 bg-white shadow-sm space-y-4 w-full lg:w-[360px]">
+                  <div>
+                    <label className="text-xs uppercase tracking-widest text-slate-500">
+                      RSVP image
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const img = new Image();
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === "string") {
+                            img.onload = () => {
+                              if (img.width && img.height)
+                                setRsvpImageAspect(img.width / img.height);
+                              setRsvpImageDataUrl(reader.result as string);
+                            };
+                            img.src = reader.result as string;
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-widest text-slate-500">
+                      RSVP text color
+                    </label>
+                    <input
+                      type="color"
+                      className="mt-2 w-20 h-10 border border-slate-200 rounded"
+                      value={rsvpNameColor}
+                      onChange={(event) => setRsvpNameColor(event.target.value)}
+                    />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs uppercase tracking-widest text-slate-500">
+                        QR size ({rsvpQrSize}px)
+                      </label>
+                      <input
+                        type="range"
+                        min="72"
+                        max="220"
+                        value={rsvpQrSize}
+                        onChange={(event) => setRsvpQrSize(Number(event.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs uppercase tracking-widest text-slate-500">
+                        Text size
+                      </label>
+                      <input
+                        type="range"
+                        min="12"
+                        max="40"
+                        value={rsvpNameSize}
+                        onChange={(event) => setRsvpNameSize(Number(event.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-widest text-slate-500">
+                      Font family
+                    </label>
+                    <select
+                      className="mt-2 w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                      value={rsvpNameFont}
+                      onChange={(event) => setRsvpNameFont(event.target.value)}
+                    >
+                      <option value="Arial, sans-serif">Arial</option>
+                      <option value="'Georgia', serif">Georgia</option>
+                      <option value="'Times New Roman', serif">Times New Roman</option>
+                      <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                      <option value="'Courier New', monospace">Courier New</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      id="rsvp-name-bg"
+                      type="checkbox"
+                      checked={rsvpNameBg}
+                      onChange={(event) => setRsvpNameBg(event.target.checked)}
+                    />
+                    <label htmlFor="rsvp-name-bg">Show background behind RSVP text</label>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
       <AnimatePresence>
         {transitioning ? (
