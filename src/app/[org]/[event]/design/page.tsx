@@ -17,6 +17,7 @@ type DesignData = {
   nameColor?: string;
   nameSize?: number;
   nameFont?: string;
+  rsvpEnabled?: boolean;
 };
 
 export default function EventDesignPage() {
@@ -36,6 +37,7 @@ export default function EventDesignPage() {
   const [nameSize, setNameSize] = useState(16);
   const [nameFont, setNameFont] = useState("Arial, sans-serif");
   const [nameBg, setNameBg] = useState(true);
+  const [rsvpEnabled, setRsvpEnabled] = useState(false);
   const [dragging, setDragging] = useState<"qr" | "name" | null>(null);
   const [transitioning, setTransitioning] = useState(false);
   const [imageAspect, setImageAspect] = useState(3 / 2);
@@ -72,6 +74,9 @@ export default function EventDesignPage() {
           setNameBg(
             (data as DesignData & { nameBg?: boolean }).nameBg as boolean,
           );
+        }
+        if (typeof data.rsvpEnabled === "boolean") {
+          setRsvpEnabled(data.rsvpEnabled);
         }
       }
       setLoading(false);
@@ -122,6 +127,7 @@ export default function EventDesignPage() {
         nameSize,
         nameFont,
         nameBg,
+        rsvpEnabled,
       });
       setTransitioning(true);
       setTimeout(() => {
@@ -323,6 +329,15 @@ export default function EventDesignPage() {
                 onChange={(event) => setNameBg(event.target.checked)}
               />
               <label htmlFor="name-bg">Show background behind name</label>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                id="rsvp-enabled"
+                type="checkbox"
+                checked={rsvpEnabled}
+                onChange={(event) => setRsvpEnabled(event.target.checked)}
+              />
+              <label htmlFor="rsvp-enabled">Enable RSVP tracking</label>
             </div>
             <div className="text-sm text-slate-600">
               Event: {eventName} - {eventDate} - {eventLocation}

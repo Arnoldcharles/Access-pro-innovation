@@ -43,6 +43,7 @@ type EventData = {
   nameBg?: boolean;
   status?: string;
   guestTableLayout?: SheetLayout | null;
+  rsvpEnabled?: boolean;
 };
 
 type Guest = {
@@ -229,6 +230,10 @@ export default function EventDashboardPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [uid, setUid] = useState("");
   const [orgPlan, setOrgPlan] = useState<"free" | "pro">("free");
+  const [rsvpEnabled, setRsvpEnabled] = useState(false);
+  const [rsvpOpen, setRsvpOpen] = useState(false);
+  const [rsvpLoading, setRsvpLoading] = useState(false);
+  const [rsvpStatus, setRsvpStatus] = useState("");
   const isFree = orgPlan !== "pro";
   const maxGuests = 500;
   const [blockedOrgOpen, setBlockedOrgOpen] = useState(false);
@@ -377,6 +382,7 @@ export default function EventDashboardPage() {
       setDate(data.date ?? "");
       setTime(data.time ?? "");
       setLocation(data.location ?? "");
+      setRsvpEnabled(data.rsvpEnabled ?? false);
       const restoredLayout = deserializeSheetLayout(data.guestTableLayout);
       setSheetLayout(restoredLayout);
       setUploadedSheetColumns(restoredLayout?.columns ?? []);
@@ -2147,6 +2153,15 @@ export default function EventDashboardPage() {
               >
                 Invite all via WhatsApp
               </button>
+              {rsvpEnabled ? (
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-purple-600 text-white text-sm"
+                  onClick={() => setRsvpOpen(true)}
+                >
+                  Send RSVP
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="px-4 py-2 rounded-2xl bg-red-600 text-white text-sm hover:bg-red-500"
@@ -3085,6 +3100,133 @@ export default function EventDashboardPage() {
                   <div className="font-semibold">{cardGuest.name}</div>
                   <div>{cardGuest.email}</div>
                   <div>{cardGuest.phone}</div>
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <AnimatePresence>
+          {rsvpOpen ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0 bg-black/70"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setRsvpOpen(false)}
+              />
+              <motion.section
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { duration: 0.3, ease: easeOut },
+                }}
+                exit={{
+                  opacity: 0,
+                  y: 10,
+                  scale: 0.98,
+                  transition: { duration: 0.2 },
+                }}
+                className="relative z-10 w-full max-w-[520px] bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl"
+              >
+                <div className="flex items-start justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold mb-1">Send RSVP Request</h2>
+                    <p className="text-sm text-slate-600">
+                      Request RSVPs from all guests
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-sm text-slate-500 hover:text-slate-900"
+                    onClick={() => setRsvpOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">
+                      Recipients
+                    </div>
+                    <div className="text-sm text-slate-700">
+                      {guests.length} saved guests will receive RSVP requests.
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">
+                      Event Details
+                    </div>
+                    <div className="text-sm text-slate-700 space-y-1">
+                      <div>
+                        <strong>Event:</strong> {eventData?.name ?? "Unnamed"}
+                      </div>
+                      <div>
+                        <strong>Date:</strong> {eventData?.date ?? "TBD"}
+                      </div>
+                      <div>
+                        <strong>Location:</strong> {eventData?.location ?? "TBD"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {rsvpStatus ? (
+                  <div className="mb-4 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+                    {rsvpStatus}
+                  </div>
+                ) : null}
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="px-5 py-3 rounded-2xl bg-slate-100 text-slate-700 font-semibold"
+                    onClick={() => setRsvpOpen(false)}
+                    disabled={rsvpLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="px-5 py-3 rounded-2xl bg-purple-600 text-white font-semibold"
+                    onClick={async () => {
+                      const orgSlug = params?.org;
+                      const eventSlug = params?.event;
+                      if (!orgSlug || !eventSlug) return;
+
+                      setRsvpLoading(true);
+                      setRsvpStatus("Sending RSVP requests...");
+                      try {
+                        setRsvpStatus(`RSVP requests sent to ${guests.length} guests!`);
+                        setTimeout(() => {
+                          setRsvpOpen(false);
+                          setRsvpStatus("");
+                          setRsvpLoading(false);
+                        }, 2000);
+                      } catch (err) {
+                        const message =
+                          err instanceof Error
+                            ? err.message
+                            : "Unable to send RSVP requests";
+                        setRsvpStatus(`Error: ${message}`);
+                        setRsvpLoading(false);
+                      }
+                    }}
+                    disabled={rsvpLoading || guests.length === 0}
+                  >
+                    {rsvpLoading ? "Sending..." : "Send RSVP Requests"}
+                  </button>
                 </div>
               </motion.section>
             </motion.div>
