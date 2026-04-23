@@ -1448,6 +1448,189 @@ export default function EventDashboardPage() {
     }
   };
 
+  const sendRsvpWhatsAppToSelectedGuests = async () => {
+    const orgSlug = params?.org;
+    const eventSlug = params?.event;
+    if (!orgSlug || !eventSlug) return;
+
+    const selectedGuests = guests.filter(
+      (guest): guest is Guest & { id: string } =>
+        typeof guest.id === "string" && rsvpSelectedGuests.has(guest.id),
+    );
+
+    if (selectedGuests.length === 0) {
+      setRsvpStatus("Select at least one guest to send RSVP requests.");
+      return;
+    }
+
+    setRsvpLoading(true);
+    setRsvpStatus(`Sending RSVP requests to ${selectedGuests.length} guests...`);
+    try {
+      const batch = writeBatch(db);
+      const invitesRef = collection(
+        db,
+        "orgs",
+        orgSlug,
+        "events",
+        eventSlug,
+        "invites",
+      );
+
+      const guestKeys = selectedGuests
+        .map((guest) => normalizeGuestKey(guest))
+        .filter(Boolean);
+      const existingByKey = new Map<
+        string,
+        {
+          token: string;
+          used?: boolean;
+          guestPhone?: string;
+          guestEmail?: string;
+        }
+      >();
+      const existingTokens = new Set<string>();
+
+      for (let i = 0; i < guestKeys.length; i += 30) {
+        const chunk = guestKeys.slice(i, i + 30);
+        const snaps = await getDocs(
+          query(invitesRef, where("guestKey", "in", chunk)),
+        );
+        snaps.docs.forEach((docSnap) => {
+          const data = docSnap.data() as {
+            token?: unknown;
+            guestKey?: unknown;
+            used?: unknown;
+            guestPhone?: unknown;
+            guestEmail?: unknown;
+          };
+          const key = typeof data.guestKey === "string" ? data.guestKey : "";
+          const token = typeof data.token === "string" ? data.token : "";
+          if (!key || !token) return;
+          existingByKey.set(key, {
+            token,
+            used: typeof data.used === "boolean" ? data.used : undefined,
+            guestPhone:
+              typeof data.guestPhone === "string"
+                ? data.guestPhone
+                : undefined,
+            guestEmail:
+              typeof data.guestEmail === "string"
+                ? data.guestEmail
+                : undefined,
+          });
+          existingTokens.add(token);
+        });
+      }
+
+      const usedTokens = new Set(existingTokens);
+      const inviteItems = selectedGuests.map((guest) => {
+        const guestKey = normalizeGuestKey(guest);
+        const existing = guestKey ? existingByKey.get(guestKey) : undefined;
+        const token =
+          existing?.token ||
+          (() => {
+            let t = createInviteToken(6);
+            while (usedTokens.has(t)) t = createInviteToken(6);
+            usedTokens.add(t);
+            return t;
+          })();
+
+        return {
+          token,
+          link: `/${orgSlug}/${eventSlug}/invite/rsvp/${token}`,
+          guestKey,
+          isExisting: Boolean(existing?.token),
+          used: existing?.used,
+          phone: guest.phone,
+          message: buildInviteMessage(guest.name),
+          guestName: guest.name,
+          guestEmail: guest.email,
+        };
+      });
+
+      inviteItems.forEach((item) => {
+        const docRef = doc(invitesRef, item.token);
+        const baseData = {
+          token: item.token,
+          guestKey: item.guestKey,
+          guestName: item.guestName,
+          guestPhone: item.phone,
+          guestEmail: item.guestEmail.trim().toLowerCase(),
+          eventName: eventData?.name ?? "",
+          eventDate: eventData?.date ?? "",
+          eventLocation: eventData?.location ?? "",
+          message: item.message,
+          imageDataUrl: eventData?.imageDataUrl ?? "",
+          qrX: eventData?.qrX ?? 0.1,
+          qrY: eventData?.qrY ?? 0.1,
+          qrSize: eventData?.qrSize ?? 96,
+          nameX: eventData?.nameX ?? 0.1,
+          nameY: eventData?.nameY ?? 0.3,
+          nameColor: eventData?.nameColor ?? "#111827",
+          nameSize: eventData?.nameSize ?? 16,
+          nameFont: eventData?.nameFont ?? "Arial, sans-serif",
+        };
+
+        if (item.isExisting) {
+          batch.set(
+            docRef,
+            {
+              ...baseData,
+              used: typeof item.used === "boolean" ? item.used : false,
+            },
+            { merge: true },
+          );
+        } else {
+          batch.set(docRef, {
+            ...baseData,
+            used: false,
+            createdAt: serverTimestamp(),
+          });
+        }
+      });
+
+      await batch.commit();
+
+      const sendItems = inviteItems.filter((item) => Boolean(item.phone));
+      let sent = 0;
+      let failed = 0;
+      const concurrency = 3;
+
+      for (let i = 0; i < sendItems.length; i += concurrency) {
+        const chunk = sendItems.slice(i, i + concurrency);
+        const results = await Promise.allSettled(
+          chunk.map((item) =>
+            sendWhatsAppPlaceholder(item.phone, item.message, item.link),
+          ),
+        );
+        results.forEach((result) => {
+          if (result.status === "fulfilled") sent += 1;
+          else failed += 1;
+        });
+      }
+
+      if (selectedGuests.length > sendItems.length) {
+        setRsvpStatus(
+          `Sent ${sent} WhatsApp invites. ${
+            selectedGuests.length - sendItems.length
+          } guests had no phone number.`,
+        );
+      } else {
+        setRsvpStatus(
+          failed
+            ? `WhatsApp sends completed: ${sent} sent, ${failed} failed.`
+            : `WhatsApp sends completed: ${sent} sent.`,
+        );
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to send RSVP requests";
+      setRsvpStatus(`Error: ${message}`);
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
   const handleCopyGuestInviteLink = async (guest: Guest) => {
     const orgSlug = params?.org;
     const eventSlug = params?.event;
@@ -3268,29 +3451,7 @@ export default function EventDashboardPage() {
                     type="button"
                     className="px-5 py-3 rounded-2xl bg-purple-600 text-white font-semibold"
                     onClick={async () => {
-                      const orgSlug = params?.org;
-                      const eventSlug = params?.event;
-                      if (!orgSlug || !eventSlug) return;
-
-                      setRsvpLoading(true);
-                      setRsvpStatus("Sending RSVP requests...");
-                      try {
-                        const selectedCount = rsvpSelectedGuests.size;
-                        setRsvpStatus(`RSVP requests sent to ${selectedCount} guest${selectedCount === 1 ? "" : "s"}!`);
-                        setTimeout(() => {
-                          setRsvpOpen(false);
-                          setRsvpStatus("");
-                          setRsvpLoading(false);
-                          setRsvpSelectedGuests(new Set());
-                        }, 2000);
-                      } catch (err) {
-                        const message =
-                          err instanceof Error
-                            ? err.message
-                            : "Unable to send RSVP requests";
-                        setRsvpStatus(`Error: ${message}`);
-                        setRsvpLoading(false);
-                      }
+                      await sendRsvpWhatsAppToSelectedGuests();
                     }}
                     disabled={rsvpLoading || rsvpSelectedGuests.size === 0}
                   >
