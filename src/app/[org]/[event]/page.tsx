@@ -2465,8 +2465,11 @@ export default function EventDashboardPage() {
                           <td className="px-4 py-3 font-semibold text-slate-900">
                             {guest.name || "-"}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {guest.email || "-"}
+                          <td
+                            className="px-4 py-3 text-slate-600 max-w-[260px]"
+                            title={guest.email || ""}
+                          >
+                            <div className="truncate">{guest.email || "-"}</div>
                           </td>
                           <td className="px-4 py-3 text-slate-600">
                             {guest.phone || "-"}
