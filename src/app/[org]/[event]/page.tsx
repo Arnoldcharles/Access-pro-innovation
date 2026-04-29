@@ -179,6 +179,62 @@ const toMillis = (
   return null;
 };
 
+const EmailIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+    className={className}
+  >
+    <path
+      d="M4 6.75C4 5.784 4.784 5 5.75 5h12.5C19.216 5 20 5.784 20 6.75v10.5c0 .966-.784 1.75-1.75 1.75H5.75C4.784 19 4 18.216 4 17.25V6.75Z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+    />
+    <path
+      d="M5.5 7.5 12 12.25 18.5 7.5"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+    className={className}
+  >
+    <path
+      d="M12 21a9 9 0 1 0-7.82-4.55L3 21l4.72-1.13A8.97 8.97 0 0 0 12 21Z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9.2 8.9c.2-.5.5-.55.8-.55h.65c.2 0 .45.06.6.35.2.36.7 1.47.76 1.58.06.12.1.27.02.43-.06.16-.1.27-.23.42-.12.15-.26.34-.37.46-.12.12-.24.25-.1.5.13.25.6 1.1 1.3 1.77.9.87 1.65 1.14 1.9 1.26.25.12.4.1.55-.06.15-.16.63-.73.8-.99.16-.25.33-.21.55-.12.22.09 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.6-.15 1.18-.2.58-1.18 1.14-1.62 1.2-.42.07-.94.1-1.52-.1-.35-.11-.8-.27-1.39-.52-2.43-1.05-4.02-3.52-4.14-3.7-.12-.17-.98-1.3-.98-2.49 0-1.18.6-1.76.8-2Z"
+      fill="currentColor"
+      opacity="0.9"
+    />
+  </svg>
+);
+
+const KebabIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    className={className}
+  >
+    <circle cx="12" cy="5.5" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="12" cy="18.5" r="1.6" />
+  </svg>
+);
+
 export default function EventDashboardPage() {
   const router = useRouter();
   const params = useParams<{ org: string; event: string }>();
@@ -2397,6 +2453,7 @@ export default function EventDashboardPage() {
                               : isPending
                                 ? "Pending save"
                                 : "-";
+                      const rowMenuKey = guest.id ?? `pending-${index}`;
                       return (
                         <tr
                           key={`guest-row-${guest.id ?? `${guest.email}-${guest.phone}-${index}`}`}
@@ -2415,9 +2472,28 @@ export default function EventDashboardPage() {
                             {guest.phone || "-"}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                              {delivery}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                title={guest.email ? `Email: ${delivery}` : "No email"}
+                                className={`inline-flex items-center justify-center h-8 w-8 rounded-xl border ${
+                                  guest.email
+                                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                    : "bg-slate-100 border-slate-200 text-slate-400"
+                                }`}
+                              >
+                                <EmailIcon className="h-4 w-4" />
+                              </span>
+                              <span
+                                title={guest.phone ? `WhatsApp: ${delivery}` : "No phone"}
+                                className={`inline-flex items-center justify-center h-8 w-8 rounded-xl border ${
+                                  guest.phone
+                                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                    : "bg-slate-100 border-slate-200 text-slate-400"
+                                }`}
+                              >
+                                <WhatsAppIcon className="h-4 w-4" />
+                              </span>
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <span
@@ -2431,60 +2507,141 @@ export default function EventDashboardPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="relative">
                               <button
                                 type="button"
-                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
-                                  guest.checkedIn
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : "bg-blue-600 text-white hover:bg-blue-500"
-                                }`}
-                                onClick={() => handleCheckInGuest(guest)}
-                                disabled={Boolean(guest.checkedIn) || isPending}
-                                title={
-                                  isPending
-                                    ? "Save guests first to enable check-in"
-                                    : ""
-                                }
-                              >
-                                {guest.checkedIn ? "Checked-in" : "Check in"}
-                              </button>
-                              <button
-                                type="button"
-                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                                disabled={isPending}
+                                className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                aria-label="Guest actions"
                                 onClick={() =>
-                                  openInviteModal("single", {
-                                    name: guest.name,
-                                    phone: guest.phone,
-                                    email: guest.email,
-                                  })
-                                }
-                              >
-                                Invite
-                              </button>
-                              <button
-                                type="button"
-                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                                disabled={isPending}
-                                onClick={() => startEdit(guest)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-red-600 hover:bg-red-50"
-                                onClick={() =>
-                                  handleDeleteGuest(
-                                    guest,
-                                    isPending && pendingIndex >= 0
-                                      ? pendingIndex
-                                      : undefined,
+                                  setMenuOpenId((prev) =>
+                                    prev === rowMenuKey ? null : rowMenuKey,
                                   )
                                 }
                               >
-                                Delete
+                                <KebabIcon className="h-5 w-5" />
                               </button>
+
+                              {menuOpenId === rowMenuKey ? (
+                                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-20">
+                                  <button
+                                    type="button"
+                                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${
+                                      isPending || guest.checkedIn
+                                        ? "text-slate-400 cursor-not-allowed"
+                                        : ""
+                                    }`}
+                                    disabled={isPending || Boolean(guest.checkedIn)}
+                                    onClick={() => {
+                                      setMenuOpenId(null);
+                                      if (!isPending) handleCheckInGuest(guest);
+                                    }}
+                                    title={
+                                      isPending
+                                        ? "Save guests first to enable check-in"
+                                        : ""
+                                    }
+                                  >
+                                    Check-in guest
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${
+                                      isPending ? "text-slate-400 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={isPending}
+                                    onClick={() => {
+                                      setMenuOpenId(null);
+                                      startEdit(guest);
+                                    }}
+                                  >
+                                    Edit guest
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${
+                                      isPending ? "text-slate-400 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={isPending}
+                                    onClick={() => {
+                                      setMenuOpenId(null);
+                                      openGuestCard(guest);
+                                    }}
+                                  >
+                                    View access card
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${
+                                      isPending || isFree
+                                        ? "text-slate-400 cursor-not-allowed"
+                                        : ""
+                                    }`}
+                                    disabled={isPending || isFree}
+                                    onClick={() => {
+                                      setMenuOpenId(null);
+                                      void handleDownloadGuestCard(guest);
+                                    }}
+                                    title={
+                                      isFree
+                                        ? "Upgrade required to download access cards"
+                                        : ""
+                                    }
+                                  >
+                                    Download access card
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${
+                                      isPending ? "text-slate-400 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={isPending}
+                                    onClick={() => {
+                                      setMenuOpenId(null);
+                                      openInviteModal("single", {
+                                        name: guest.name,
+                                        phone: guest.phone,
+                                        email: guest.email,
+                                      });
+                                    }}
+                                  >
+                                    WhatsApp access card
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${
+                                      isPending ? "text-slate-400 cursor-not-allowed" : ""
+                                    }`}
+                                    disabled={isPending}
+                                    onClick={() => {
+                                      setMenuOpenId(null);
+                                      void handleCopyGuestInviteLink(guest);
+                                    }}
+                                  >
+                                    Copy invite link
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-600"
+                                    onClick={() => {
+                                      setMenuOpenId(null);
+                                      void handleDeleteGuest(
+                                        guest,
+                                        isPending && pendingIndex >= 0
+                                          ? pendingIndex
+                                          : undefined,
+                                      );
+                                    }}
+                                  >
+                                    Delete guest
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
                           </td>
                         </tr>
