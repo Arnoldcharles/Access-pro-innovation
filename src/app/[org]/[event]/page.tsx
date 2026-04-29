@@ -197,6 +197,11 @@ export default function EventDashboardPage() {
   const [guestLastName, setGuestLastName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  const [guestCategory, setGuestCategory] = useState("");
+  const [guestAdmits, setGuestAdmits] = useState(1);
+  const [guestTab, setGuestTab] = useState<
+    "all" | "checked_in" | "pending_check_in"
+  >("all");
   const [guestError, setGuestError] = useState("");
   const [guestNotice, setGuestNotice] = useState("");
   const [copyToast, setCopyToast] = useState("");
@@ -583,6 +588,14 @@ export default function EventDashboardPage() {
   const checkedInCount = guests.filter((guest) => guest.checkedIn).length;
   const remainingToCheckIn = Math.max(0, savedGuestCount - checkedInCount);
 
+  const guestsForTab = useMemo(() => {
+    if (guestTab === "checked_in")
+      return filteredGuests.filter((guest) => guest.checkedIn);
+    if (guestTab === "pending_check_in")
+      return filteredGuests.filter((guest) => !guest.checkedIn);
+    return filteredGuests;
+  }, [filteredGuests, guestTab]);
+
   const handleAddGuest = () => {
     setGuestError("");
     if (!guestFirstName.trim() || !guestLastName.trim() || !guestPhone.trim()) {
@@ -616,6 +629,8 @@ export default function EventDashboardPage() {
     setGuestLastName("");
     setGuestPhone("");
     setGuestEmail("");
+    setGuestCategory("");
+    setGuestAdmits(1);
   };
 
   const parseDelimitedRows = (text: string, delimiter: "," | "\t") => {
@@ -803,6 +818,30 @@ export default function EventDashboardPage() {
     const delimiter: "," | "\t" = text.includes("\t") ? "\t" : ",";
     const rows = parseDelimitedRows(text, delimiter);
     return parseSpreadsheetRows(rows);
+  };
+
+  const downloadGuestCsvTemplate = () => {
+    const header = ["First Name", "Last Name", "Phone", "Email"];
+    const rows = [
+      header,
+      ["Ada", "Lovelace", "+2348012345678", "ada@example.com"],
+      ["", "", "", ""],
+    ];
+    const escapeCell = (value: string) => {
+      const v = value ?? "";
+      if (/[\",\n]/.test(v)) return `"${v.replaceAll("\"", "\"\"")}"`;
+      return v;
+    };
+    const csv = rows.map((row) => row.map(escapeCell).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "guest-upload-template.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
   const handleImportFile = async (
@@ -2053,14 +2092,17 @@ export default function EventDashboardPage() {
           >
             Back to {orgName || "dashboard"}
           </Link>
-          <h1 className="text-3xl md:text-4xl font-black mt-6 mb-3">
-            {eventData?.name ?? "Event"}
+          <h1 className="text-3xl md:text-4xl font-black mt-6 mb-2">
+            Guest Management
           </h1>
           <p className="text-slate-600 mb-8">
+            <span className="font-semibold text-slate-900">
+              {eventData?.name ?? "Event"}
+            </span>
+            <span className="mx-2 text-slate-300">•</span>
             {eventData?.date ? `Date: ${eventData.date}` : "Date: TBD"}
-            {eventData?.time
-              ? ` - Time: ${eventData.time}`
-              : " - Time: TBD"} - {eventData?.location ?? "Location: TBD"}
+            {eventData?.time ? ` - Time: ${eventData.time}` : " - Time: TBD"}
+            {eventData?.location ? ` - ${eventData.location}` : ""}
           </p>
           <div className="grid sm:grid-cols-3 gap-3 text-xs text-slate-500">
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
@@ -2133,151 +2175,57 @@ export default function EventDashboardPage() {
           </div>
         </motion.div>
 
-        <section className="grid md:grid-cols-3 gap-6">
+        <section className="mt-10 grid gap-4 md:grid-cols-3">
           {[
+            { label: "Total Guests", value: totalGuestCount },
+            { label: "Checked-in Guests", value: checkedInCount },
             {
-              label: "Registrations",
-              value: "0",
-              note: "Import guest list to begin",
+              label: "Guests Pending Check-in",
+              value: Math.max(0, totalGuestCount - checkedInCount),
             },
-            {
-              label: "Checked-in",
-              value: "0",
-              note: "Check-in opens on event day",
-            },
-            { label: "Staff assigned", value: "0", note: "Assign your team" },
           ].map((card) => (
             <div
               key={card.label}
-              className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm"
+              className="bg-white border border-slate-200 rounded-3xl shadow-sm px-6 py-5"
             >
               <div className="text-xs uppercase tracking-widest text-slate-500">
                 {card.label}
               </div>
-              <div className="text-3xl font-black mt-2">{card.value}</div>
-              <div className="text-sm text-slate-500 mt-2">{card.note}</div>
+              <div className="mt-2 text-3xl font-black text-slate-900">
+                {card.value}
+              </div>
             </div>
           ))}
         </section>
 
         <section className="mt-10 grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-            <h2 className="text-lg font-bold mb-4">Edit event details</h2>
-            <form onSubmit={handleUpdate} className="space-y-4">
+            <h2 className="text-lg font-bold mb-4">Guest Management</h2>
+            <h3 className="text-sm font-bold text-slate-900 mb-3">
+              Create New Guest
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Event name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-              <div className="grid sm:grid-cols-2 gap-4">
-                <input
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                  placeholder="Event date"
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                />
-                <input
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                  placeholder="Event time"
-                  type="time"
-                  value={time}
-                  onChange={(event) => setTime(event.target.value)}
-                />
-              </div>
-              <input
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Location"
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
-              />
-              <div className="flex items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm"
-                >
-                  {saving ? "Saving..." : "Save changes"}
-                </button>
-                <button
-                  type="button"
-                  className="text-red-400 hover:text-red-300 text-sm"
-                  onClick={handleDelete}
-                >
-                  Delete event
-                </button>
-              </div>
-              {error ? (
-                <div className="text-sm text-red-400">{error}</div>
-              ) : null}
-            </form>
-          </div>
-          <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-            <h2 className="text-lg font-bold mb-4">Quick actions</h2>
-            <div className="space-y-3 text-sm text-slate-600">
-              <div>Import guest list</div>
-              <div>Assign staff</div>
-              <div>Generate QR passes</div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-10 grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
-          <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-            <h2 className="text-lg font-bold mb-4">Guest list</h2>
-            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-wider text-emerald-700">
-                  Checked-in
-                </div>
-                <div className="mt-1 text-2xl font-black text-emerald-800">
-                  {checkedInCount}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-wider text-slate-600">
-                  Saved guests
-                </div>
-                <div className="mt-1 text-2xl font-black text-slate-900">
-                  {savedGuestCount}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-wider text-blue-700">
-                  Remaining
-                </div>
-                <div className="mt-1 text-2xl font-black text-blue-800">
-                  {remainingToCheckIn}
-                </div>
-              </div>
-            </div>
-            <div className="mb-4">
-              <input
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Search guest name to check in"
-                value={guestSearch}
-                onChange={(event) => setGuestSearch(event.target.value)}
-              />
-            </div>
-            <div className="grid sm:grid-cols-4 gap-3 mb-4">
-              <input
-                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="First name"
+                placeholder="First Name"
                 value={guestFirstName}
                 onChange={(event) => setGuestFirstName(event.target.value)}
-                required
               />
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Last name"
+                placeholder="Last Name"
                 value={guestLastName}
                 onChange={(event) => setGuestLastName(event.target.value)}
-                required
               />
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder={`Phone number (e.g. +${defaultCountryCallingCode}...)`}
+                placeholder="Email"
+                value={guestEmail}
+                onChange={(event) => setGuestEmail(event.target.value)}
+              />
+              <input
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                placeholder={`Phone Number (e.g. +${defaultCountryCallingCode}...)`}
                 inputMode="tel"
                 autoComplete="tel"
                 value={guestPhone}
@@ -2289,50 +2237,87 @@ export default function EventDashboardPage() {
                   if (formatted && formatted !== guestPhone)
                     setGuestPhone(formatted);
                 }}
-                required
               />
+              <select
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                value={guestCategory}
+                onChange={(event) => setGuestCategory(event.target.value)}
+              >
+                <option value="">Category (Optional)</option>
+                <option value="VIP">VIP</option>
+                <option value="Family">Family</option>
+                <option value="Regular">Regular</option>
+              </select>
               <input
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
-                placeholder="Email"
-                value={guestEmail}
-                onChange={(event) => setGuestEmail(event.target.value)}
+                type="number"
+                min={1}
+                value={guestAdmits}
+                onChange={(event) =>
+                  setGuestAdmits(Math.max(1, Number(event.target.value || 1)))
+                }
+                placeholder="Admits (min 1)"
               />
             </div>
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <button
                 type="button"
-                className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm"
+                className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold"
                 onClick={handleAddGuest}
               >
-                Add guest
-              </button>
-              <label className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm cursor-pointer">
-                Import Spreadsheet
-                <input
-                  type="file"
-                  accept=".csv,.tsv,.txt,.xlsx,.xls"
-                  className="hidden"
-                  onChange={handleImportFile}
-                />
-              </label>
-              <button
-                type="button"
-                className="px-4 py-2 rounded-2xl bg-blue-600 text-white text-sm"
-                disabled={guestSaving || pendingGuests.length === 0}
-                onClick={handleSaveGuests}
-              >
-                {guestSaving
-                  ? "Saving files..."
-                  : `Save ${pendingGuests.length} guest${pendingGuests.length === 1 ? "" : "s"}`}
+                Add Guest
               </button>
               {isFree ? (
                 <div className="text-xs text-slate-500">
                   Free mode: {totalGuestCount}/{maxGuests} guests
                 </div>
               ) : null}
+            </div>
+            {guestError ? (
+              <div className="text-sm text-red-500 mb-4">{guestError}</div>
+            ) : null}
+            {guestNotice ? (
+              <div className="text-sm text-emerald-600 mb-4">{guestNotice}</div>
+            ) : null}
+            <div className="mt-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2">
+                {[
+                  { key: "all" as const, label: `All (${filteredGuests.length})` },
+                  {
+                    key: "checked_in" as const,
+                    label: `Checked in (${filteredGuests.filter((g) => g.checkedIn).length})`,
+                  },
+                  {
+                    key: "pending_check_in" as const,
+                    label: `Pending (${filteredGuests.filter((g) => !g.checkedIn).length})`,
+                  },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={`px-3 py-1.5 rounded-2xl text-sm font-semibold border ${
+                      guestTab === tab.key
+                        ? "bg-emerald-600 border-emerald-600 text-white"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
+                    onClick={() => setGuestTab(tab.key)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                className="w-full md:w-[320px] bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm"
+                placeholder="Search guests"
+                value={guestSearch}
+                onChange={(event) => setGuestSearch(event.target.value)}
+              />
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="px-4 py-2 rounded-2xl bg-emerald-600 text-white text-sm"
+                className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm"
                 onClick={() => openInviteModal("all")}
               >
                 Invite all via WhatsApp
@@ -2358,29 +2343,159 @@ export default function EventDashboardPage() {
                 Delete all
               </button>
             </div>
-            {guestError ? (
-              <div className="text-sm text-red-500 mb-4">{guestError}</div>
-            ) : null}
-            {guestNotice ? (
-              <div className="text-sm text-emerald-600 mb-4">{guestNotice}</div>
-            ) : null}
-            {guestLimitWarning ? (
-              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <div className="text-sm font-semibold text-amber-800 mb-2">
-                  Upload blocked in free mode
-                </div>
-                <div className="text-sm text-amber-700 mb-3">
-                  {guestLimitWarning}
-                </div>
-                <Link
-                  href={`/${params.org}/pricing`}
-                  className="inline-flex items-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
-                >
-                  View pricing
-                </Link>
-              </div>
-            ) : null}
-            <div className="space-y-2">
+
+            <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50">
+              <table className="w-full text-sm">
+                <thead className="bg-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      No
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      Full Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      Phone Number
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      Delivery Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      Checkin Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {guestsForTab.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-8 text-center text-slate-500"
+                      >
+                        No guests match your search.
+                      </td>
+                    </tr>
+                  ) : (
+                    guestsForTab.map((guest, index) => {
+                      const isPending = !guest.id;
+                      const pendingIndex = isPending
+                        ? pendingGuests.indexOf(guest)
+                        : -1;
+                      const delivery =
+                        guest.status === "accepted"
+                          ? "Accepted"
+                          : guest.status === "declined"
+                            ? "Declined"
+                            : guest.status === "invited"
+                              ? "Invited"
+                              : isPending
+                                ? "Pending save"
+                                : "-";
+                      return (
+                        <tr
+                          key={`guest-row-${guest.id ?? `${guest.email}-${guest.phone}-${index}`}`}
+                          className="border-b border-slate-200 last:border-b-0"
+                        >
+                          <td className="px-4 py-3 text-slate-500">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-900">
+                            {guest.name || "-"}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {guest.email || "-"}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {guest.phone || "-"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                              {delivery}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                guest.checkedIn
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {guest.checkedIn ? "Checked" : "Pending"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
+                                  guest.checkedIn
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-blue-600 text-white hover:bg-blue-500"
+                                }`}
+                                onClick={() => handleCheckInGuest(guest)}
+                                disabled={Boolean(guest.checkedIn) || isPending}
+                                title={
+                                  isPending
+                                    ? "Save guests first to enable check-in"
+                                    : ""
+                                }
+                              >
+                                {guest.checkedIn ? "Checked-in" : "Check in"}
+                              </button>
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                disabled={isPending}
+                                onClick={() =>
+                                  openInviteModal("single", {
+                                    name: guest.name,
+                                    phone: guest.phone,
+                                    email: guest.email,
+                                  })
+                                }
+                              >
+                                Invite
+                              </button>
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                disabled={isPending}
+                                onClick={() => startEdit(guest)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-red-600 hover:bg-red-50"
+                                onClick={() =>
+                                  handleDeleteGuest(
+                                    guest,
+                                    isPending && pendingIndex >= 0
+                                      ? pendingIndex
+                                      : undefined,
+                                  )
+                                }
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="hidden space-y-2">
               {filteredGuests.length === 0 ? (
                 <div className="text-sm text-slate-500">
                   No guests match your search.
@@ -2735,24 +2850,62 @@ export default function EventDashboardPage() {
             </div>
           </div>
           <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-            <h2 className="text-lg font-bold mb-4">Import tips</h2>
-            <div className="space-y-3 text-sm text-slate-600">
-              <div>
-                Upload CSV/TSV or Excel (.xlsx/.xls) to preserve your table
-                column order.
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">Upload CSV</h2>
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:text-blue-700"
+                onClick={downloadGuestCsvTemplate}
+              >
+                Download sample template
+              </button>
+            </div>
+            <label className="group block rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 px-6 py-10 text-center cursor-pointer hover:bg-emerald-50">
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt,.xlsx,.xls"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+              <div className="text-sm font-semibold text-slate-700">
+                Click to upload the CSV here
               </div>
-              <div>
-                Wide multi-table sheets are auto-arranged into responsive table
-                cards.
+              <div className="mt-1 text-xs text-slate-500">
+                CSV/TSV/Text or Excel (.xlsx/.xls)
               </div>
-              <div>
-                Header row is optional; if present, column names are used in the
-                guest table.
+            </label>
+            {guestLimitWarning ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <div className="text-sm font-semibold text-amber-800 mb-2">
+                  Upload blocked in free mode
+                </div>
+                <div className="text-sm text-amber-700 mb-3">
+                  {guestLimitWarning}
+                </div>
+                <Link
+                  href={`/${params.org}/pricing`}
+                  className="inline-flex items-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+                >
+                  View pricing
+                </Link>
               </div>
-              <div>
-                Use the search bar to find guest names quickly and check them
-                in.
+            ) : null}
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="text-xs text-slate-500">
+                {uploadProcessing
+                  ? "Processing upload..."
+                  : pendingGuests.length > 0
+                    ? `${pendingGuests.length} guest${pendingGuests.length === 1 ? "" : "s"} ready to save`
+                    : "Upload a file to import guests"}
               </div>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                disabled={guestSaving || pendingGuests.length === 0}
+                onClick={handleSaveGuests}
+              >
+                {guestSaving ? "Saving..." : "Upload Guest List"}
+              </button>
             </div>
           </div>
         </section>
