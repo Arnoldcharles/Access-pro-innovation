@@ -3071,6 +3071,107 @@ export default function EventDashboardPage() {
         </section>
 
         <AnimatePresence>
+          {editingId ? (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center px-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0 bg-black/55"
+                onClick={cancelEdit}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              />
+              <motion.section
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { duration: 0.22, ease: easeOut },
+                }}
+                exit={{
+                  opacity: 0,
+                  y: 10,
+                  scale: 0.98,
+                  transition: { duration: 0.18 },
+                }}
+                className="relative z-10 w-full max-w-[560px] rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+              >
+                <h3 className="text-lg font-bold text-slate-900">
+                  Edit guest
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Update guest details and save.
+                </p>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <input
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                    placeholder="First Name"
+                    value={editFirstName}
+                    onChange={(event) => setEditFirstName(event.target.value)}
+                  />
+                  <input
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                    placeholder="Last Name"
+                    value={editLastName}
+                    onChange={(event) => setEditLastName(event.target.value)}
+                  />
+                  <input
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                    placeholder={`Phone Number (e.g. +${defaultCountryCallingCode}...)`}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={editPhone}
+                    onChange={(event) => setEditPhone(event.target.value)}
+                    onBlur={() => {
+                      const formatted = formatPhoneWithPlus(editPhone, {
+                        defaultCountryCallingCode,
+                      });
+                      if (formatted && formatted !== editPhone)
+                        setEditPhone(formatted);
+                    }}
+                  />
+                  <input
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm"
+                    placeholder="Email"
+                    value={editEmail}
+                    onChange={(event) => setEditEmail(event.target.value)}
+                  />
+                </div>
+
+                {guestError ? (
+                  <div className="mt-3 text-sm text-red-500">{guestError}</div>
+                ) : null}
+
+                <div className="mt-6 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    className="px-5 py-3 rounded-2xl bg-slate-100 text-slate-700 font-semibold"
+                    onClick={cancelEdit}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                    onClick={handleSaveEdit}
+                  >
+                    Save changes
+                  </button>
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {guestSaving ? (
             <motion.div
               className="fixed inset-0 z-50 flex items-center justify-center px-6"
