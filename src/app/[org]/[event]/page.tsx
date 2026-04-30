@@ -654,18 +654,28 @@ export default function EventDashboardPage() {
 
   const handleAddGuest = () => {
     setGuestError("");
-    if (!guestFirstName.trim() || !guestLastName.trim() || !guestPhone.trim()) {
-      setGuestError("First name, last name, and phone number are required.");
+    if (!guestFirstName.trim() || !guestLastName.trim()) {
+      setGuestError("First name and last name are required.");
       return;
     }
-    const normalizedPhoneDigits = normalizePhoneDigits(guestPhone, {
-      defaultCountryCallingCode,
-    });
-    if (!normalizedPhoneDigits) {
-      setGuestError("Enter a valid phone number.");
+    const hasPhone = Boolean(guestPhone.trim());
+    const hasEmail = Boolean(guestEmail.trim());
+    if (!hasPhone && !hasEmail) {
+      setGuestError("Please enter at least a phone number or an email.");
       return;
     }
-    const normalizedPhone = `+${normalizedPhoneDigits}`;
+
+    let normalizedPhone = "";
+    if (hasPhone) {
+      const normalizedPhoneDigits = normalizePhoneDigits(guestPhone, {
+        defaultCountryCallingCode,
+      });
+      if (!normalizedPhoneDigits) {
+        setGuestError("Enter a valid phone number.");
+        return;
+      }
+      normalizedPhone = `+${normalizedPhoneDigits}`;
+    }
     const fullName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
     setPendingGuests((prev) => [
       ...prev,
@@ -1857,19 +1867,29 @@ export default function EventDashboardPage() {
     const eventSlug = params?.event;
     if (!orgSlug || !eventSlug || !editingId) return;
     setGuestError("");
-    if (!editFirstName.trim() || !editLastName.trim() || !editPhone.trim()) {
-      setGuestError("First name, last name, and phone number are required.");
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      setGuestError("First name and last name are required.");
       return;
     }
     try {
-      const normalizedPhoneDigits = normalizePhoneDigits(editPhone, {
-        defaultCountryCallingCode,
-      });
-      if (!normalizedPhoneDigits) {
-        setGuestError("Enter a valid phone number.");
+      const hasPhone = Boolean(editPhone.trim());
+      const hasEmail = Boolean(editEmail.trim());
+      if (!hasPhone && !hasEmail) {
+        setGuestError("Please enter at least a phone number or an email.");
         return;
       }
-      const normalizedPhone = `+${normalizedPhoneDigits}`;
+
+      let normalizedPhone = "";
+      if (hasPhone) {
+        const normalizedPhoneDigits = normalizePhoneDigits(editPhone, {
+          defaultCountryCallingCode,
+        });
+        if (!normalizedPhoneDigits) {
+          setGuestError("Enter a valid phone number.");
+          return;
+        }
+        normalizedPhone = `+${normalizedPhoneDigits}`;
+      }
       const fullName = `${editFirstName.trim()} ${editLastName.trim()}`.trim();
       await updateDoc(
         doc(db, "orgs", orgSlug, "events", eventSlug, "guests", editingId),
