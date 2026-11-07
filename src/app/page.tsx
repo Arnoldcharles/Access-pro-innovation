@@ -155,41 +155,6 @@ export default function HomePage() {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-8 lg:pt-14">
-          <header className="mx-auto flex max-w-6xl items-center justify-between pb-10">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-400/15 ring-1 ring-cyan-300/30">
-                <Sparkles className="h-5 w-5 text-cyan-300" />
-              </div>
-              <div>
-                <div className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                  Access Pro
-                </div>
-              </div>
-            </div>
-
-            <nav className="hidden items-center gap-8 text-sm text-slate-300 md:flex">
-              <Link href="#features" className="transition hover:text-white">
-                Features
-              </Link>
-              <Link href="#solutions" className="transition hover:text-white">
-                Solutions
-              </Link>
-              <Link href="#pricing" className="transition hover:text-white">
-                Pricing
-              </Link>
-              <Link href="#faq" className="transition hover:text-white">
-                FAQ
-              </Link>
-            </nav>
-
-            <Link
-              href="/sign-in"
-              className="rounded-full border border-cyan-300/40 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Login
-            </Link>
-          </header>
-
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
             <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
